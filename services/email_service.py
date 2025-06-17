@@ -1,9 +1,9 @@
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 from email.utils import parsedate_to_datetime
-import os, pickle
+import os, pickle, json
 from dotenv import load_dotenv
 import base64
 import logging
@@ -14,35 +14,47 @@ from database import get_db
 load_dotenv
 
 SCOPES = [os.getenv("GMAIL_SCOPE")]
+TOKEN_FILE = "token.json"
 
 def get_authenticated_gmail_service():
     logging.basicConfig(level=logging.INFO)
+
+    if not os.path.exists(TOKEN_FILE):
+        logging.error("No token.json found. User must authenticate via frontend.")
+        return None
+
+    # Load the token payload
+    with open(TOKEN_FILE, "r") as f:
+        data = json.load(f)
+
+    creds = Credentials(
+        token=data["access_token"],
+        refresh_token=data.get("refresh_token"),
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=os.getenv("GOOGLE_CLIENT_ID"),
+        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        scopes=data["scope"],
+    )
+
+    # Refresh if expired
+    if creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            # save updated tokens
+            data["access_token"] = creds.token
+            data["expires_at"] = creds.expiry.isoformat()
+            with open(TOKEN_FILE, "w") as f:
+                json.dump(data, f)
+        except Exception as e:
+            logging.error(f"Failed to refresh token: {e}")
+            return None
+
     try:
-        creds = None
-        if os.path.exists("token.json"):
-            with open("token.json", "rb") as token:
-                creds = pickle.load(token)
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                if not os.path.exists("credentials.json"):
-                    logging.error("Missing credentials.json file required for OAuth flow.")
-                    return None
-                flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-                creds = flow.run_console()
-            with open("token.json", "wb") as token:
-                pickle.dump(creds, token)
         return build("gmail", "v1", credentials=creds)
-    
-    except FileNotFoundError as e:
-        logging.error(f"File not found during Gmail auth setup: {e}")
-    except pickle.PickleError as e:
-        logging.error(f"Failed to deserialize token file: {e}")
     except Exception as e:
-        logging.exception(f"Unexpected error during Gmail authentication: {e}")
-    
-    return None
+        logging.exception(f"Failed to build Gmail service: {e}")
+        return None
+
 
 def scan_bloomberg_emails(service, db: Session):
     try:

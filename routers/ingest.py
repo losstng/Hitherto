@@ -12,6 +12,7 @@ from models import Newsletter
 
 from services.email_service import extract_bloomberg_email_text, scan_bloomberg_emails
 
+
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 
 # retrieve
