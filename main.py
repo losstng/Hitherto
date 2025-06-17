@@ -10,7 +10,6 @@ from fastapi.routing import APIRoute
 import os
 from routers import ingest # query  # Adjust based on actual folder structure
 import pickle
-from google_auth_oauthlib.flow import Flow
 #  export PYTHONPATH=$(pwd)
 # =>. python3 -m uvicorn main:app --reload --log-level debug
 # redis-server
@@ -26,7 +25,6 @@ async def lifespan(app: FastAPI):
     else:
         logging.error("Failed to authenticate Gmail service on startup.")
     yield
-
 
 app = FastAPI(lifespan=lifespan)
 

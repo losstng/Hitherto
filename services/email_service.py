@@ -14,47 +14,40 @@ from database import get_db
 load_dotenv
 
 SCOPES = [os.getenv("GMAIL_SCOPE")]
-TOKEN_FILE = "token.json"
+
 
 def get_authenticated_gmail_service():
     logging.basicConfig(level=logging.INFO)
+    creds = None
 
-    if not os.path.exists(TOKEN_FILE):
-        logging.error("No token.json found. User must authenticate via frontend.")
-        return None
+    # Try loading token from file
+    if os.path.exists("token.json"):
+        with open("token.json", "rb") as token:
+            creds = pickle.load(token)
 
-    # Load the token payload
-    with open(TOKEN_FILE, "r") as f:
-        data = json.load(f)
-
-    creds = Credentials(
-        token=data["access_token"],
-        refresh_token=data.get("refresh_token"),
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=os.getenv("GOOGLE_CLIENT_ID"),
-        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-        scopes=data["scope"],
-    )
-
-    # Refresh if expired
-    if creds.expired and creds.refresh_token:
-        try:
+    # If no valid credentials, go through the OAuth flow
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            # save updated tokens
-            data["access_token"] = creds.token
-            data["expires_at"] = creds.expiry.isoformat()
-            with open(TOKEN_FILE, "w") as f:
-                json.dump(data, f)
-        except Exception as e:
-            logging.error(f"Failed to refresh token: {e}")
-            return None
+        else:
+            if not os.path.exists("credentials.json"):
+                logging.error("Missing credentials.json for OAuth flow.")
+                return None
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json", SCOPES
+            )
+            creds = flow.run_local_server(port=8080)
+
+        # Save the credentials for the next run
+        with open("token.json", "wb") as token:
+            pickle.dump(creds, token)
 
     try:
-        return build("gmail", "v1", credentials=creds)
+        service = build("gmail", "v1", credentials=creds)
+        return service
     except Exception as e:
         logging.exception(f"Failed to build Gmail service: {e}")
         return None
-
 
 def scan_bloomberg_emails(service, db: Session):
     try:
