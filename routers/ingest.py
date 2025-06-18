@@ -22,11 +22,30 @@ async def reload_bloomberg_emails(db: Session = Depends(get_db)):
         if gmail_service is None:
             raise RuntimeError("Gmail service not initialized")
 
-        count = scan_bloomberg_emails(service=gmail_service, db=db)
-        return ApiResponse(success=True, data={"new_entries": count})
+        scan_bloomberg_emails(service=gmail_service, db=db)
+        newsletters = (
+            db.query(Newsletter)
+            .order_by(Newsletter.received_at.desc())
+            .all()
+        )
+
+        payload = [
+            {
+                "title": n.title,
+                "message_id": n.message_id,
+                "category": n.category,
+                "received_at": n.received_at.isoformat() if n.received_at else None,
+                "has_text": n.extracted_text is not None,
+                "has_chunks": bool(n.chunked_text),
+            }
+            for n in newsletters
+        ]
+
+        return ApiResponse(success=True, data=payload)
 
     except Exception as e:
         return ApiResponse(success=False, error=str(e))
+        
 
 @router.get("/category_filter", response_model=ApiResponse)
 def get_newsletters_by_category(category: str = Query(...), db: Session = Depends(get_db)):
@@ -61,31 +80,58 @@ def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
         if gmail_service is None:
             raise RuntimeError("Gmail service is not initialized")
 
-        newsletter = extract_bloomberg_email_text(service=gmail_service, db=db, msg_id=message_id)
-        if not newsletter:
-            return ApiResponse(success=False, error=f"Extraction failed for {message_id}")
+        # ⇣ helper already does the “skip-if-present” logic
+        newsletter = extract_bloomberg_email_text(
+            service=gmail_service, db=db, message_id=message_id
+        )
+        if newsletter is None:
+            return ApiResponse(success=False, error="Extraction failed or no content.")
 
         return ApiResponse(
             success=True,
             data={
                 "message_id": newsletter.message_id,
-                "title": newsletter.title,
-                "category": newsletter.category,
-                "extracted_text_preview": newsletter.extracted_text[:250] + "..."  # Just a preview
-            }
+                "title":       newsletter.title,
+                "category":    newsletter.category,
+                "excerpt":     newsletter.extracted_text[:250] + "…",
+                "has_text":    True,
+            },
         )
-
     except Exception as e:
         return ApiResponse(success=False, error=str(e))
 
-@router.post("/chunk/{message_id}")
+@router.post("/chunk/{message_id}", response_model=ApiResponse)
 def chunk_newsletter(message_id: str, db: Session = Depends(get_db)):
-    return chunk_newsletter_text(db, message_id)
+    newsletter = chunk_newsletter_text(db, message_id)
+    if newsletter:
+        return ApiResponse(success=True, data={"message_id": message_id, "has_chunks": True})
+    return ApiResponse(success=False, error="Chunking failed or prerequisites missing.")
 
 # process
-@router.post("/embed/{message_id}")
+@router.post("/embed/{message_id}", response_model=ApiResponse)
 def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
-    return embed_chunked_newsletter(db, message_id)
+    """Only embed if chunked_text exists and we have NOT already embedded."""
+    try:
+        newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
+        if not newsletter:
+            return ApiResponse(success=False, error="Newsletter not found.")
+
+        if not newsletter.chunked_text:
+            return ApiResponse(success=False, error="Chunked text missing. Run /chunk first.")
+
+        # Primitive “already-embedded” check: does dir exist?
+        cat   = (newsletter.category or "uncategorized").lower().replace(" ", "_")
+        vec_dir = Path("db/faiss_store") / cat
+        if (vec_dir / "index.faiss").exists():
+            return ApiResponse(success=True, data={"message_id": message_id, "already_embedded": True})
+
+        db_obj = embed_chunked_newsletter(db, message_id)
+        if not db_obj:
+            return ApiResponse(success=False, error="Embedding failed.")
+        return ApiResponse(success=True, data={"message_id": message_id, "embedded": True})
+
+    except Exception as e:
+        return ApiResponse(success=False, error=str(e))
 
 # review
 @router.post("/tokenize/{message_id}")
