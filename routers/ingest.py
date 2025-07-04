@@ -11,6 +11,7 @@ from main import gmail_service
 from models import Newsletter
 
 from services.email_service import extract_bloomberg_email_text, scan_bloomberg_emails
+from pathlib import Path
 
 
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
