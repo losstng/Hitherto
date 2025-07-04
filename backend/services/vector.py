@@ -2,7 +2,7 @@ from langchain.schema import Document
 from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from sqlalchemy.orm import Session
-from models import Newsletter  # assuming your ORM model is named Newsletter
+from ..models import Newsletter  # assuming your ORM model is named Newsletter
 from pathlib import Path
 import logging, os
 

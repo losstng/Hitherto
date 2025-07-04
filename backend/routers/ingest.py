@@ -2,15 +2,15 @@
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from database import get_db
-from schemas import ApiResponse
-from services.chunking import chunk_newsletter_text
-from services.vector import embed_chunked_newsletter
-from services.token_counter import compute_token_count_simple
-from main import gmail_service
-from models import Newsletter
+from ..database import get_db
+from ..schemas import ApiResponse
+from ..services.chunking import chunk_newsletter_text
+from ..services.vector import embed_chunked_newsletter
+from ..services.token_counter import compute_token_count_simple
+from ..main import gmail_service
+from ..models import Newsletter
 
-from services.email_service import extract_bloomberg_email_text, scan_bloomberg_emails
+from ..services.email_service import extract_bloomberg_email_text, scan_bloomberg_emails
 from pathlib import Path
 
 
