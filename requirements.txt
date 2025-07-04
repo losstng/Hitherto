@@ -16,7 +16,6 @@ huggingface-hub
 sentence-transformers
 pandas
 numpy
-python-dotenv
 psycopg2
 bs4
 langchain-community
