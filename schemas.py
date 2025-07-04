@@ -1,8 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Union, Any
-from datetime import datetime
-from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime
 
 class ApiResponse(BaseModel):
