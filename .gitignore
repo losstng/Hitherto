@@ -1,2 +1,22 @@
+# Python cache files
 __pycache__/
 *.pyc
+
+# Environment files
+.env
+.env.*
+
+# Credential files
+credentials.*
+token.*
+
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Build and temporary directories
+build/
+dist/
+coverage/
+.next/
+.vercel/
