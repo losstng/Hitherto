@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from models import Newsletter
 from bs4 import BeautifulSoup
 from database import get_db
-load_dotenv
+load_dotenv()
 
 SCOPES = [os.getenv("GMAIL_SCOPE")]
 
