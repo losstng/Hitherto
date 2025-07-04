@@ -1,14 +1,14 @@
 gmail_service = None
 from fastapi import FastAPI, Request
-from services.email_service import get_authenticated_gmail_service  # adjust path
+from .services.email_service import get_authenticated_gmail_service  # adjust path
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-from database import engine
-import models
+from .database import engine
+from . import models
 from contextlib import asynccontextmanager
 from fastapi.routing import APIRoute
 import os
-from routers import ingest # query  # Adjust based on actual folder structure
+from .routers import ingest # query  # Adjust based on actual folder structure
 import pickle
 #  export PYTHONPATH=$(pwd)
 # =>. python3 -m uvicorn main:app --reload --log-level debug

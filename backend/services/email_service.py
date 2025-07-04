@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 import base64
 import logging
 from sqlalchemy.orm import Session
-from models import Newsletter
+from ..models import Newsletter
 from bs4 import BeautifulSoup
-from database import get_db
+from ..database import get_db
 load_dotenv()
 
 SCOPES = [os.getenv("GMAIL_SCOPE")]

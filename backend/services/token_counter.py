@@ -3,7 +3,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from models import Newsletter
+from ..models import Newsletter
 load_dotenv()
 
 MODEL = os.getenv("MODEL_IN_USE")

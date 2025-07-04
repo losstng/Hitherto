@@ -1,3 +1,4 @@
+from ..models import Newsletter
 from sqlalchemy.exc import SQLAlchemyError
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
