@@ -6,7 +6,7 @@ export default function ReloadButton() {
   const reload = useReload();
   return (
     <button
-      className="px-3 py-1 bg-indigo-600 text-white rounded"
+      className="py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-md"
       onClick={() => reload.mutate()}
       disabled={reload.isPending}
     >
