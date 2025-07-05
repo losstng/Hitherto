@@ -20,28 +20,42 @@ def get_authenticated_gmail_service():
     logging.basicConfig(level=logging.INFO)
     creds = None
 
-    # Try loading token from file
+    # Step 1: Try loading token
     if os.path.exists("token.json"):
-        with open("token.json", "rb") as token:
-            creds = pickle.load(token)
+        try:
+            with open("token.json", "rb") as token:
+                creds = pickle.load(token)
+        except Exception as e:
+            logging.error(f"Failed to load token: {e}")
+            creds = None
 
-    # If no valid credentials, go through the OAuth flow
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
+    # Step 2: Refresh or delete invalid token
+    if creds and creds.expired and creds.refresh_token:
+        try:
             creds.refresh(Request())
-        else:
+        except Exception as e:
+            logging.error(f"Token refresh failed: {e}, deleting token.")
+            os.remove("token.json")
+            return get_authenticated_gmail_service()
+
+    # Step 3: If creds don't exist or still invalid, run OAuth
+    if not creds or not creds.valid:
+        try:
             if not os.path.exists("credentials.json"):
                 logging.error("Missing credentials.json for OAuth flow.")
                 return None
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES
-            )
+
+            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
             creds = flow.run_local_server(port=0)
 
-        # Save the credentials for the next run
-        with open("token.json", "wb") as token:
-            pickle.dump(creds, token)
+            with open("token.json", "wb") as token:
+                pickle.dump(creds, token)
 
+        except Exception as e:
+            logging.error(f"OAuth flow failed: {e}")
+            return None
+
+    # Step 4: Return Gmail service
     try:
         service = build("gmail", "v1", credentials=creds)
         return service

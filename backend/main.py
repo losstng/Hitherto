@@ -11,7 +11,7 @@ import os
 from .routers import ingest # query  # Adjust based on actual folder structure
 import pickle
 #  export PYTHONPATH=$(pwd)
-# =>. python3 -m uvicorn main:app --reload --log-level debug
+# =>. python -m uvicorn backend.main:app --reload --log-level debug
 # redis-server
 SCOPES = [os.getenv("GMAIL_SCOPE")]
 gmail_service = None  # global handle
