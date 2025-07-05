@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { reloadBloomberg, extractText, chunkText, NewsletterMeta, embedNewsletter } from "./actions/useIngest";
+import { reloadBloomberg, extractText, chunkText, NewsletterMeta, embedNewsletter } from "../actions/useIngest";
 import React from "react";
 
 export default function Dashboard() {
