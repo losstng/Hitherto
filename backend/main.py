@@ -8,7 +8,7 @@ from . import models
 from contextlib import asynccontextmanager
 from fastapi.routing import APIRoute
 import os
-from .routers import ingest # query  # Adjust based on actual folder structure
+from .routers import ingest, query  # Adjust based on actual folder structure
 import pickle
 #  export PYTHONPATH=$(pwd)
 # =>. python -m uvicorn backend.main:app --reload --log-level debug
@@ -38,7 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(ingest.router, prefix="/ingest", tags=["Ingest"])
-# app.include_router(query.router, prefix="/query", tags=["Query"])
+app.include_router(query.router, tags=["Query"])
 
 # Log available routes on startup
 for route in app.routes:

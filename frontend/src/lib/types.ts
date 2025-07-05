@@ -19,3 +19,11 @@ export type ExtractResp = {
   category: string;
   extracted_text_preview: string;
 };
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  timestamp?: string;
+  source?: string;
+}
