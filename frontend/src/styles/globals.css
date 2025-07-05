@@ -1,4 +1,8 @@
-/* src/styles/globals.css (Tailwind already imported) */
-.btn {
-  @apply px-2 py-1 bg-indigo-500 text-white rounded disabled:bg-gray-300;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: Your global styles can go below */
+body {
+  @apply bg-gray-50 text-gray-900;
 }
