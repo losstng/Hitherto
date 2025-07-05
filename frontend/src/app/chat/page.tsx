@@ -14,10 +14,11 @@ interface AskResp {
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  const ask = useMutation(async ({ text, mode }: { text: string; mode: string }) => {
-    const { data } = await api.post("/ask", { query: text, mode });
-    return data as { success: boolean; data: AskResp };
-  }, {
+  const ask = useMutation({
+    mutationFn: async ({ text, mode }: { text: string; mode: string }) => {
+      const { data } = await api.post("/ask", { query: text, mode });
+      return data as { success: boolean; data: AskResp };
+    }, 
     onSuccess: (data) => {
       const reply: ChatMessage = {
         id: `${Date.now()}-a`,

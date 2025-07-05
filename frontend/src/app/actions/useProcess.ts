@@ -4,10 +4,12 @@ import { api } from "@/lib/api";
 import { ApiResponse } from "@/lib/types";
 
 const useWrap = <T,>(url: string) =>
-  useMutation(async () => {
-    const { data } = await api.post<ApiResponse<T>>(url);
-    if (!data.success) throw new Error(data.error);
-    return data.data!;
+  useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<ApiResponse<T>>(url);
+      if (!data.success) throw new Error(data.error);
+      return data.data!;
+    },
   });
 
 export const useExtract  = (id: string) => useWrap(`/ingest/extract_text/${id}`);
