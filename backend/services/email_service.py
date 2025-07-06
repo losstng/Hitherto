@@ -65,11 +65,26 @@ def get_authenticated_gmail_service():
 
 def scan_bloomberg_emails(service, db: Session):
     try:
-        results = service.users().messages().list(userId='me', q="from:noreply@news.bloomberg.com").execute()
+        results = service.users().messages().list(
+            userId="me", q="from:noreply@news.bloomberg.com"
+        ).execute()
+
         messages = results.get("messages", [])
+        token = results.get("nextPageToken")
+        while token:
+            next_page = (
+                service.users()
+                .messages()
+                .list(userId="me", q="from:noreply@news.bloomberg.com", pageToken=token)
+                .execute()
+            )
+            messages.extend(next_page.get("messages", []))
+            token = next_page.get("nextPageToken")
+
         if not messages:
             logging.info("No Bloomberg emails found.")
             return []
+        logging.info(f"Processing {len(messages)} Bloomberg emails.")
 
         stored = []
 

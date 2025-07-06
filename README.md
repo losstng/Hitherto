@@ -40,6 +40,13 @@ python -m uvicorn backend.main:app --reload --log-level debug \
   --port "${FASTAPI_PORT:-8000}"
 ```
 
+### Gmail credentials
+
+The backend expects OAuth credentials for Gmail stored in `credentials.json` and
+creates `token.json` after the first authentication. These files **must not be
+committed**. Place them in the repository root when running locally and rely on
+`.gitignore` to keep them out of version control.
+
 ## Running the frontend
 
 ```bash
