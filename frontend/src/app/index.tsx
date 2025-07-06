@@ -15,7 +15,7 @@ export default function Dashboard() {
 
       <div className="flex gap-4">
         <ReloadButton />
-        <CategorySelect onPick={setCat}/>
+        <CategorySelect value={cat} onChange={setCat} />
       </div>
 
       {isFetching && <p>Loading newsletters…</p>}
