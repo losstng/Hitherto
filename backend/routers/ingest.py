@@ -16,6 +16,13 @@ from pathlib import Path
 
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 
+# ----- Status ------------------------------------------------------------
+@router.get("/gmail_status", response_model=ApiResponse)
+def gmail_status():
+    """Return whether the Gmail service is connected."""
+    from ..main import gmail_service
+    return ApiResponse(success=True, data={"connected": gmail_service is not None})
+
 # retrieve
 @router.post("/bloomberg_reload", response_model=ApiResponse)
 async def reload_bloomberg_emails(db: Session = Depends(get_db)):
@@ -133,6 +140,23 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
 
     except Exception as e:
         return ApiResponse(success=False, error=str(e))
+
+# ----- Review ------------------------------------------------------------
+@router.get("/raw_text/{message_id}", response_model=ApiResponse)
+def get_raw_text(message_id: str, db: Session = Depends(get_db)):
+    """Return previously extracted plain text for a newsletter."""
+    n = db.query(Newsletter).filter_by(message_id=message_id).first()
+    if not n or not n.extracted_text:
+        return ApiResponse(success=False, error="Text not available")
+    return ApiResponse(success=True, data={"text": n.extracted_text})
+
+@router.get("/chunked_text/{message_id}", response_model=ApiResponse)
+def get_chunked_text(message_id: str, db: Session = Depends(get_db)):
+    """Return stored chunked text for a newsletter."""
+    n = db.query(Newsletter).filter_by(message_id=message_id).first()
+    if not n or not n.chunked_text:
+        return ApiResponse(success=False, error="Chunked text not available")
+    return ApiResponse(success=True, data={"chunks": n.chunked_text})
 
 # review
 @router.post("/tokenize/{message_id}")
