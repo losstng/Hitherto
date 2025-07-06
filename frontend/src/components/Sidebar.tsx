@@ -23,7 +23,7 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="h-screen w-[20%] bg-gray-100 shadow flex flex-col">
+    <aside className="h-screen w-1/5 bg-gray-100 shadow flex flex-col">
       <Status />
       <nav className="p-4 space-y-2">
         <Link
