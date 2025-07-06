@@ -55,3 +55,14 @@ The available API routes are defined under `backend/routers`. `ingest.py`
 handles newsletter ingestion and `query.py` exposes a simple `/ask` endpoint for
 question answering. LLMs can read this README to quickly understand how to start
 the backend and interact with these routes.
+
+## API Checklist
+
+- [ ] **APIs Connect** – verify if Gmail or other providers are connected or disconnected
+- [ ] **Reload Bloomberg** – scan and load entries into the database; optional category comes from the frontend
+- [ ] **Category Selection** – query the database using existing category attributes
+- **Gmail Entries**
+  - [ ] **Extract** – parse email text and store it in the database
+  - [ ] **Vector** – chunk and vectorize text for retrieval
+  - [ ] **Text** – return the raw extracted text
+  - [ ] **Select** – to be finished
