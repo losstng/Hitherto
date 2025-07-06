@@ -10,7 +10,7 @@ export default function ReloadButton() {
       onClick={() => reload.mutate()}
       disabled={reload.isPending}
     >
-      {reload.isPending ? "Reloading…" : "Reload Bloomberg"}
+      {reload.isPending ? "Reloading…" : "Reload"}
       
     </button>
   );
