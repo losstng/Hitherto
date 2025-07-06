@@ -14,7 +14,7 @@ from ..services.email_service import extract_bloomberg_email_text, scan_bloomber
 from pathlib import Path
 
 
-router = APIRouter(prefix="/ingest", tags=["Ingestion"])
+router = APIRouter(tags=["Ingestion"])
 
 # ----- Status ------------------------------------------------------------
 @router.get("/gmail_status", response_model=ApiResponse)
