@@ -13,18 +13,24 @@ export default function EmailsPage() {
 
   return (
     <div className="flex w-full min-h-screen">
-      <div className="flex w-4/5">
+      <div className="w-1/5">
         <Sidebar />
-        <div className="w-4/5 space-y-4 p-4">
-          <div className="flex items-center gap-4 sticky top-0 bg-white/75 backdrop-blur p-2 border-b">
-            <CategorySelect value={cat} onChange={setCat} />
-            <ReloadButton />
-          </div>
+      </div>
+      <div className="flex w-4/5">
+        <div className="w-1/2 space-y-4 p-4">
           {isFetching && <p>Loading emails…</p>}
           {data && <NewsletterTable data={data} />}
         </div>
+        <div className="w-1/2 flex flex-col">
+          <div className="flex items-center gap-4 p-2 border-b bg-white/75 backdrop-blur sticky top-0">
+            <CategorySelect value={cat} onChange={setCat} />
+            <ReloadButton />
+          </div>
+          <div className="flex-1">
+            <ChatPanel />
+          </div>
+        </div>
       </div>
-      <ChatPanel />
     </div>
   );
 }
