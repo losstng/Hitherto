@@ -5,7 +5,7 @@ import {
   useChunk,
   useEmbed,
   useTokenize,
-} from "@/hooks/useProcess";
+} from "@/app/actions/useProcess";
 import { NewsletterLite } from "@/lib/types";
 
 export default function NewsletterRow({ n }: { n: NewsletterLite }) {

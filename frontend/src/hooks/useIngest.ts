@@ -3,12 +3,14 @@ import { api } from "@/lib/api";
 import { ApiResponse, NewsletterLite } from "@/lib/types";
 
 export const useReload = () =>
-  useMutation(async () => {
-    const { data } = await api.post<ApiResponse<NewsletterLite[]>>(
-      "/ingest/bloomberg_reload"
-    );
-    if (!data.success) throw new Error(data.error);
-    return data.data!;
+  useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<ApiResponse<NewsletterLite[]>>(
+        "/ingest/bloomberg_reload"
+      );
+      if (!data.success) throw new Error(data.error);
+      return data.data!;
+    },
   });
 
 export const useCategory = (category: string) =>
