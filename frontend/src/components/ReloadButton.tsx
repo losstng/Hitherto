@@ -11,6 +11,7 @@ export default function ReloadButton() {
       disabled={reload.isPending}
     >
       {reload.isPending ? "Reloading…" : "Reload Bloomberg"}
+      
     </button>
   );
 }
