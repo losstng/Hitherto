@@ -38,7 +38,7 @@ export default function Sidebar() {
             <img src="/bloomberg.svg" className="h-6 w-6" alt="" />
             Hitherto Digest
           </span>
-          <div className="bg-red-500 text-white p-8">If this isn't red, Tailwind is dead.</div>
+          <div className="bg-red-500 text-white p-8">If this isn&apos;t red, Tailwind is dead.</div>
         </div>
         <nav className="flex flex-col gap-y-2 mt-6">
           {nav.map((item) => (
