@@ -53,7 +53,7 @@ export default function ChatPanel() {
   };
 
   return (
-    <div className="fixed bottom-0 right-0 w-96 h-[480px] bg-white border shadow-lg flex flex-col">
+    <div className="w-[20%] h-screen bg-white border-l shadow-lg flex flex-col">
       {context && (
         <div className="px-3 py-2 text-xs border-b bg-gray-50">Context: {context.messageId}</div>
       )}
