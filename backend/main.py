@@ -1,6 +1,6 @@
 gmail_service = None
 from fastapi import FastAPI, Request
-from .services.email_service import get_authenticated_gmail_service  # adjust path
+from .services.email_service import get_authenticated_gmail_service
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .database import engine
@@ -11,7 +11,7 @@ import os
 from .routers import ingest, query  # Adjust based on actual folder structure
 import pickle
 #  export PYTHONPATH=$(pwd)
-# =>. python -m uvicorn backend.main:app --reload --log-level debug
+# Run with: python -m uvicorn backend.main:app --reload --log-level debug
 # redis-server
 SCOPES = [os.getenv("GMAIL_SCOPE")]
 gmail_service = None  # global handle
@@ -44,3 +44,9 @@ app.include_router(query.router, tags=["Query"])
 for route in app.routes:
     if isinstance(route, APIRoute):
         logging.info(f"{route.path} -> {route.methods}")
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("FASTAPI_PORT", os.getenv("PORT", 8000)))
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)
+
