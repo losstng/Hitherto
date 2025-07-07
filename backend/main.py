@@ -13,6 +13,8 @@ import pickle
 #  export PYTHONPATH=$(pwd)
 # Run with: python -m uvicorn backend.main:app --reload --log-level debug
 # redis-server
+
+logging.basicConfig(level=logging.INFO)
 SCOPES = [os.getenv("GMAIL_SCOPE")]
 gmail_service = None  # global handle
 
