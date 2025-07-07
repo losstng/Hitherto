@@ -7,6 +7,7 @@ from pathlib import Path
 import logging, os
 
 def embed_chunked_newsletter(db: Session, message_id: str, persist_dir="db/faiss_store"):
+    logging.info(f"Embedding chunks for newsletter {message_id}")
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
         if not newsletter:
@@ -20,6 +21,7 @@ def embed_chunked_newsletter(db: Session, message_id: str, persist_dir="db/faiss
             return None
         # Prepare documents
         documents = [Document(page_content=chunk) for chunk in newsletter.chunked_text]
+        logging.debug(f"Prepared {len(documents)} documents for embedding")
 
         # Initialize embedding model
         embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -32,6 +34,7 @@ def embed_chunked_newsletter(db: Session, message_id: str, persist_dir="db/faiss
         category_dir = os.path.join(persist_dir, category)
         Path(category_dir).mkdir(parents=True, exist_ok=True)
         vector_db.save_local(category_dir)
+        logging.debug(f"Vector DB saved to {category_dir}")
         if not os.path.exists(os.path.join(category_dir, "index.faiss")):
             logging.error(f"FAISS index file not found in {category_dir}")
             return None
