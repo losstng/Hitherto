@@ -22,7 +22,10 @@ logger = logging.getLogger(__name__)
 @router.get("/gmail_status", response_model=ApiResponse)
 def gmail_status():
     """Return whether the Gmail service is connected."""
-    return ApiResponse(success=True, data={"connected": main.gmail_service is not None})
+    logger.info("Checking Gmail service connection status")
+    connected = main.gmail_service is not None
+    logger.debug(f"Gmail connected: {connected}")
+    return ApiResponse(success=True, data={"connected": connected})
 
 # retrieve
 @router.post("/bloomberg_reload", response_model=ApiResponse)
@@ -66,7 +69,10 @@ async def reload_bloomberg_emails(db: Session = Depends(get_db)):
 
 @router.get("/category_filter", response_model=ApiResponse)
 def get_newsletters_by_category(category: str = Query(...), db: Session = Depends(get_db)):
+    logger.info(f"Filtering newsletters by category: {category}")
+
     def filter_newsletters_by_category(db: Session, category: str):
+        logger.debug(f"Querying DB for category: {category}")
         normalized = category.lower().replace(" ", "_")
         results = (
             db.query(Newsletter)
@@ -74,6 +80,7 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
             .order_by(Newsletter.received_at.desc())
             .all()
         )
+        logger.debug(f"Found {len(results)} results for category: {normalized}")
 
         return [
             {
@@ -81,20 +88,25 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
                 "message_id": n.message_id,
                 "received_at": n.received_at,
             }
-        for n in results
-    ]
+            for n in results
+        ]
+
     try:
         filtered = filter_newsletters_by_category(db=db, category=category)
+        logger.info(f"Returning {len(filtered)} filtered newsletters")
         return ApiResponse(success=True, data=filtered)
     except Exception as e:
+        logger.exception("Failed to filter newsletters by category")
         return ApiResponse(success=False, error=str(e))
 
 
 # preprocess
 @router.post("/extract_text/{message_id}", response_model=ApiResponse)
 def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
+    logger.info(f"Extracting text for newsletter {message_id}")
     try:
         if main.gmail_service is None:
+            logger.error("Gmail service is not initialized")
             raise RuntimeError("Gmail service is not initialized")
 
         # ⇣ helper already does the “skip-if-present” logic
@@ -102,8 +114,10 @@ def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
             service=main.gmail_service, db=db, message_id=message_id
         )
         if newsletter is None:
+            logger.warning(f"Extraction returned no content for {message_id}")
             return ApiResponse(success=False, error="Extraction failed or no content.")
 
+        logger.info(f"Successfully extracted text for {message_id}")
         return ApiResponse(
             success=True,
             data={
@@ -115,59 +129,82 @@ def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
             },
         )
     except Exception as e:
+        logger.exception("Error extracting Bloomberg content")
         return ApiResponse(success=False, error=str(e))
 
 @router.post("/chunk/{message_id}", response_model=ApiResponse)
 def chunk_newsletter(message_id: str, db: Session = Depends(get_db)):
+    logger.info(f"Chunking newsletter {message_id}")
     newsletter = chunk_newsletter_text(db, message_id)
     if newsletter:
+        logger.info(f"Chunking succeeded for {message_id}")
         return ApiResponse(success=True, data={"message_id": message_id, "has_chunks": True})
+    logger.error(f"Chunking failed for {message_id}")
     return ApiResponse(success=False, error="Chunking failed or prerequisites missing.")
 
 # process
 @router.post("/embed/{message_id}", response_model=ApiResponse)
 def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
     """Only embed if chunked_text exists and we have NOT already embedded."""
+    logger.info(f"Embedding newsletter {message_id}")
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
         if not newsletter:
+            logger.error(f"Newsletter {message_id} not found")
             return ApiResponse(success=False, error="Newsletter not found.")
 
         if not newsletter.chunked_text:
+            logger.error(f"Chunked text missing for {message_id}")
             return ApiResponse(success=False, error="Chunked text missing. Run /chunk first.")
 
         # Primitive “already-embedded” check: does dir exist?
         cat   = (newsletter.category or "uncategorized").lower().replace(" ", "_")
         vec_dir = Path("db/faiss_store") / cat
         if (vec_dir / "index.faiss").exists():
+            logger.info(f"Newsletter {message_id} already embedded")
             return ApiResponse(success=True, data={"message_id": message_id, "already_embedded": True})
 
         db_obj = embed_chunked_newsletter(db, message_id)
         if not db_obj:
+            logger.error(f"Embedding failed for {message_id}")
             return ApiResponse(success=False, error="Embedding failed.")
+        logger.info(f"Embedding completed for {message_id}")
         return ApiResponse(success=True, data={"message_id": message_id, "embedded": True})
 
     except Exception as e:
+        logger.exception("Error embedding newsletter")
         return ApiResponse(success=False, error=str(e))
 
 # ----- Review ------------------------------------------------------------
 @router.get("/raw_text/{message_id}", response_model=ApiResponse)
 def get_raw_text(message_id: str, db: Session = Depends(get_db)):
     """Return previously extracted plain text for a newsletter."""
+    logger.info(f"Fetching raw text for {message_id}")
     n = db.query(Newsletter).filter_by(message_id=message_id).first()
     if not n or not n.extracted_text:
+        logger.warning(f"No text available for {message_id}")
         return ApiResponse(success=False, error="Text not available")
+    logger.debug(f"Returning {len(n.extracted_text)} characters of text")
     return ApiResponse(success=True, data={"text": n.extracted_text})
 
 @router.get("/chunked_text/{message_id}", response_model=ApiResponse)
 def get_chunked_text(message_id: str, db: Session = Depends(get_db)):
     """Return stored chunked text for a newsletter."""
+    logger.info(f"Fetching chunked text for {message_id}")
     n = db.query(Newsletter).filter_by(message_id=message_id).first()
     if not n or not n.chunked_text:
+        logger.warning(f"Chunked text not found for {message_id}")
         return ApiResponse(success=False, error="Chunked text not available")
+    logger.debug(f"Returning {len(n.chunked_text)} chunks")
     return ApiResponse(success=True, data={"chunks": n.chunked_text})
 
 # review
 @router.post("/tokenize/{message_id}")
 def tokenize_newsletter(message_id: str, db: Session = Depends(get_db)):
-    return compute_token_count_simple(db, message_id)
+    logger.info(f"Tokenizing newsletter {message_id}")
+    count = compute_token_count_simple(db, message_id)
+    if count is None:
+        logger.error(f"Tokenization failed for {message_id}")
+        return ApiResponse(success=False, error="Tokenization failed")
+    logger.debug(f"Token count for {message_id}: {count}")
+    return count
