@@ -8,7 +8,7 @@ from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
 from ..services.vector import embed_chunked_newsletter
 from ..services.token_counter import compute_token_count_simple
-from ..main import gmail_service
+from .. import main
 from ..models import Newsletter
 
 from ..services.email_service import extract_bloomberg_email_text, scan_bloomberg_emails
@@ -22,20 +22,19 @@ logger = logging.getLogger(__name__)
 @router.get("/gmail_status", response_model=ApiResponse)
 def gmail_status():
     """Return whether the Gmail service is connected."""
-    from ..main import gmail_service
-    return ApiResponse(success=True, data={"connected": gmail_service is not None})
+    return ApiResponse(success=True, data={"connected": main.gmail_service is not None})
 
 # retrieve
 @router.post("/bloomberg_reload", response_model=ApiResponse)
 async def reload_bloomberg_emails(db: Session = Depends(get_db)):
     logger.info("Starting bloomberg_reload endpoint")
     try:
-        if gmail_service is None:
+        if main.gmail_service is None:
             logger.error("Gmail service not initialized")
             raise RuntimeError("Gmail service not initialized")
 
         logger.debug("Invoking scan_bloomberg_emails")
-        stored = scan_bloomberg_emails(service=gmail_service, db=db)
+        stored = scan_bloomberg_emails(service=main.gmail_service, db=db)
         logger.debug(f"scan_bloomberg_emails stored {len(stored)} new entries")
 
         newsletters = (
@@ -95,12 +94,12 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
 @router.post("/extract_text/{message_id}", response_model=ApiResponse)
 def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
     try:
-        if gmail_service is None:
+        if main.gmail_service is None:
             raise RuntimeError("Gmail service is not initialized")
 
         # ⇣ helper already does the “skip-if-present” logic
         newsletter = extract_bloomberg_email_text(
-            service=gmail_service, db=db, message_id=message_id
+            service=main.gmail_service, db=db, message_id=message_id
         )
         if newsletter is None:
             return ApiResponse(success=False, error="Extraction failed or no content.")
