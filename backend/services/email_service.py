@@ -73,9 +73,12 @@ def get_authenticated_gmail_service():
         return None
 
 def scan_bloomberg_emails(service, db: Session):
+    logging.info("Starting scan_bloomberg_emails")
     try:
+        logging.debug("Listing Bloomberg messages from Gmail")
         results = service.users().messages().list(userId='me', q="from:noreply@news.bloomberg.com").execute()
         messages = results.get("messages", [])
+        logging.debug(f"Found {len(messages)} messages")
         if not messages:
             logging.info("No Bloomberg emails found.")
             return []
@@ -84,9 +87,11 @@ def scan_bloomberg_emails(service, db: Session):
 
         for msg_meta in messages:
             msg_id = msg_meta["id"]
+            logging.debug(f"Processing message {msg_id}")
 
             # Skip if already exists
             if db.query(Newsletter).filter_by(message_id=msg_id).first():
+                logging.debug(f"Skipping {msg_id}, already in DB")
                 continue
 
             msg = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
@@ -129,8 +134,10 @@ def scan_bloomberg_emails(service, db: Session):
             )
             db.add(newsletter)
             stored.append(newsletter)
+            logging.debug(f"Stored metadata for {msg_id}")
 
         db.commit()
+        logging.info(f"scan_bloomberg_emails stored {len(stored)} new newsletters")
         return stored
 
     except Exception as e:
@@ -140,6 +147,7 @@ def scan_bloomberg_emails(service, db: Session):
 
 
 def extract_bloomberg_email_text(service, db: Session, message_id: str):
+    logging.info(f"Extracting content for {message_id}")
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
         if not newsletter:

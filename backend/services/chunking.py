@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 import logging
 
 def chunk_newsletter_text(db: Session, message_id: str, chunk_size=500, chunk_overlap=100):
+    logging.info(f"Chunking text for newsletter {message_id}")
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
         if not newsletter:
@@ -24,6 +25,7 @@ def chunk_newsletter_text(db: Session, message_id: str, chunk_size=500, chunk_ov
             docs = [Document(page_content=newsletter.extracted_text)]
             chunks = splitter.split_documents(docs)
             chunked_payload = [c.page_content for c in chunks]
+            logging.debug(f"Generated {len(chunked_payload)} chunks")
         except Exception as split_err:
             logging.error(f"Error during text splitting: {split_err}")
             return None
@@ -37,6 +39,7 @@ def chunk_newsletter_text(db: Session, message_id: str, chunk_size=500, chunk_ov
             logging.error(f"Database update failed for message_id {message_id}: {db_err}")
             return None
 
+        logging.info(f"Chunking stored for newsletter {message_id}")
         return newsletter
 
     except Exception as e:

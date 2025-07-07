@@ -9,6 +9,7 @@ load_dotenv()
 MODEL = os.getenv("MODEL_IN_USE")
 
 def compute_token_count_simple(db: Session, message_id: str, model_name: str = MODEL):
+    logging.info(f"Computing token count for {message_id}")
     try:
         import tiktoken  # localize import to ensure modular portability
 
