@@ -6,6 +6,7 @@ from email.utils import parsedate_to_datetime
 import os, pickle, json
 from dotenv import load_dotenv
 import base64
+import quopri
 import logging
 from sqlalchemy.orm import Session
 from ..models import Newsletter
@@ -166,7 +167,8 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
                 if part.get("mimeType") == "text/plain" and "data" in part.get("body", {}):
                     try:
                         data = part["body"]["data"]
-                        body = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+                        raw_bytes = base64.urlsafe_b64decode(data)
+                        body = quopri.decodestring(raw_bytes).decode("utf-8", errors="replace")
                         break
                     except Exception as e:
                         logging.warning(f"Failed to decode body of {message_id}: {e}")
@@ -175,6 +177,17 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         if not body:
             logging.warning(f"No text/plain body found for message_id: {message_id}")
             return None
+
+        # Category extraction from body
+        for line in body.splitlines():
+            line = line.strip()
+            if line.endswith("=20"):
+                raw_category = line.replace("=20", "").strip()
+                newsletter.category = raw_category.lower().replace(" ", "_")
+                logging.debug(
+                    f"Backfilled category '{newsletter.category}' for {newsletter.message_id}"
+                )
+                break
 
         # Parsing logic for extracting useful content
         lines = body.splitlines()
