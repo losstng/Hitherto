@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+import logging
 from ..database import get_db
 from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
@@ -15,6 +16,7 @@ from pathlib import Path
 
 
 router = APIRouter(tags=["Ingestion"])
+logger = logging.getLogger(__name__)
 
 # ----- Status ------------------------------------------------------------
 @router.get("/gmail_status", response_model=ApiResponse)
@@ -26,16 +28,22 @@ def gmail_status():
 # retrieve
 @router.post("/bloomberg_reload", response_model=ApiResponse)
 async def reload_bloomberg_emails(db: Session = Depends(get_db)):
+    logger.info("Starting bloomberg_reload endpoint")
     try:
         if gmail_service is None:
+            logger.error("Gmail service not initialized")
             raise RuntimeError("Gmail service not initialized")
 
-        scan_bloomberg_emails(service=gmail_service, db=db)
+        logger.debug("Invoking scan_bloomberg_emails")
+        stored = scan_bloomberg_emails(service=gmail_service, db=db)
+        logger.debug(f"scan_bloomberg_emails stored {len(stored)} new entries")
+
         newsletters = (
             db.query(Newsletter)
             .order_by(Newsletter.received_at.desc())
             .all()
         )
+        logger.debug(f"Retrieved {len(newsletters)} newsletters from DB")
 
         payload = [
             {
@@ -49,9 +57,11 @@ async def reload_bloomberg_emails(db: Session = Depends(get_db)):
             for n in newsletters
         ]
 
+        logger.info("bloomberg_reload completed")
         return ApiResponse(success=True, data=payload)
 
     except Exception as e:
+        logger.exception("Error in bloomberg_reload endpoint")
         return ApiResponse(success=False, error=str(e))
         
 
