@@ -55,9 +55,18 @@ def get_authenticated_gmail_service():
             logging.error(f"OAuth flow failed: {e}")
             return None
 
+    logging.info(f"Credentials valid: {getattr(creds, 'valid', False)}")
+    logging.info(f"Credential scopes: {getattr(creds, 'scopes', [])}")
+
     # Step 4: Return Gmail service
     try:
         service = build("gmail", "v1", credentials=creds)
+        # Force an API call to verify the service
+        try:
+            service.users().labels().list(userId="me").execute()
+            logging.info("Successfully accessed Gmail API.")
+        except Exception:
+            logging.exception("Test Gmail API call failed")
         return service
     except Exception as e:
         logging.exception(f"Failed to build Gmail service: {e}")
