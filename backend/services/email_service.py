@@ -179,6 +179,7 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
             return None
 
         # Category extraction from body
+        category_updated = False
         for line in body.splitlines():
             line = line.strip()
             if line.endswith("=20"):
@@ -187,7 +188,12 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
                 logging.debug(
                     f"Backfilled category '{newsletter.category}' for {newsletter.message_id}"
                 )
+                category_updated = True
                 break
+
+        if category_updated:
+            db.commit()
+            db.refresh(newsletter)
 
         # Parsing logic for extracting useful content
         lines = body.splitlines()
