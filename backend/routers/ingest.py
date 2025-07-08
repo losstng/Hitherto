@@ -108,24 +108,33 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
 # preprocess
 @router.post("/extract_text/{message_id}", response_model=ApiResponse)
 def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
-    """Temporarily return the raw Gmail API message for debugging."""
-    logger.info(f"Fetching raw Gmail message for {message_id}")
+    """Extract plain text from a Bloomberg newsletter."""
+    logger.info(f"Extracting text for newsletter {message_id}")
     try:
         if main.gmail_service is None:
             logger.error("Gmail service is not initialized")
             raise RuntimeError("Gmail service is not initialized")
 
-        raw_msg = fetch_raw_email(main.gmail_service, message_id)
-        if raw_msg is None:
-            logger.warning(f"Failed to fetch raw message for {message_id}")
-            return ApiResponse(success=False, error="Could not fetch raw message")
+        newsletter = extract_bloomberg_email_text(
+            service=main.gmail_service, db=db, message_id=message_id
+        )
+        if newsletter is None:
+            logger.warning(f"Extraction failed or no content for {message_id}")
+            return ApiResponse(success=False, error="Extraction failed or no content.")
 
-        json_raw = json.dumps(raw_msg, indent=2)
-        logger.info(f"Raw message size: {len(json_raw)} bytes")
-        logger.info(f"Gmail API message for {message_id}: {json_raw[:1000]}")
-        return ApiResponse(success=True, data={"raw": raw_msg})
+        logger.info(f"Extraction succeeded for {message_id}")
+        return ApiResponse(
+            success=True,
+            data={
+                "message_id": newsletter.message_id,
+                "title": newsletter.title,
+                "category": newsletter.category,
+                "excerpt": newsletter.extracted_text[:250] + "…",
+                "has_text": True,
+            },
+        )
     except Exception as e:
-        logger.exception("Error retrieving raw Gmail message")
+        logger.exception("Error extracting newsletter text")
         return ApiResponse(success=False, error=str(e))
 
 @router.post("/chunk/{message_id}", response_model=ApiResponse)

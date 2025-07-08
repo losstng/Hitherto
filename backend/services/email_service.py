@@ -164,6 +164,23 @@ def fetch_raw_email(service, message_id: str):
         return None
 
 
+def find_text_plain_part(payload):
+    if payload.get("mimeType") == "text/plain" and "body" in payload and "data" in payload["body"]:
+        return payload
+    for part in payload.get("parts", []):
+        found = find_text_plain_part(part)
+        if found:
+            return found
+    return None
+
+
+def log_mime_structure(payload, depth=0):
+    indent = "  " * depth
+    logging.debug(f"{indent}- {payload.get('mimeType', 'unknown')}")
+    for part in payload.get("parts", []):
+        log_mime_structure(part, depth + 1)
+
+
 def extract_bloomberg_email_text(service, db: Session, message_id: str):
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
@@ -178,24 +195,27 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         payload = msg.get("payload", {})
         headers = {h["name"]: h["value"] for h in payload.get("headers", [])}
 
+        log_mime_structure(payload)
+
         body = ""
-        if "parts" in payload:
-            for part in payload["parts"]:
-                if part.get("mimeType") == "text/plain" and "data" in part.get("body", {}):
-                    try:
-                        data = part["body"]["data"]
-                        raw_bytes = base64.urlsafe_b64decode(data)
-                        body = quopri.decodestring(raw_bytes).decode("utf-8", errors="replace")
-                        break
-                    except Exception as e:
-                        logging.warning(f"Failed to decode body of {message_id}: {e}")
-                        return None
+        text_part = find_text_plain_part(payload)
+        if text_part:
+            try:
+                data = text_part["body"]["data"]
+                raw_bytes = base64.urlsafe_b64decode(data)
+                body = quopri.decodestring(raw_bytes).decode("utf-8", errors="replace")
+            except Exception as e:
+                logging.warning(f"Failed to decode body of {message_id}: {e}")
+                return None
+        else:
+            logging.warning(f"No text/plain part found in message {message_id}")
+            return None
 
         if not body:
             logging.warning(f"No text/plain body found for message_id: {message_id}")
             return None
 
-        # Category extraction from body
+        # Extract category from body
         category_updated = False
         for line in body.splitlines():
             line = line.strip()
@@ -212,25 +232,21 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
             db.commit()
             db.refresh(newsletter)
 
-        # Parsing logic for extracting useful content
+        # Extract meaningful content between header and footer
         lines = body.splitlines()
         content_lines = []
         in_content = False
         for i in range(len(lines)):
             line = lines[i]
-
             if not in_content:
                 if 'Content-Type: text/plain; charset="UTF-8"' in line:
                     in_content = True
                 continue
-
             if i + 1 < len(lines) and lines[i].strip().lower() == "more from bloomberg" and lines[i + 1].strip().lower().startswith("enjoying"):
                 break
-
             content_lines.append(line)
 
         extracted_text = "\n".join(content_lines).strip()
-
         if not extracted_text:
             logging.warning(f"No content extracted for {message_id}")
             return None
