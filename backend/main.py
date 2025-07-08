@@ -15,8 +15,9 @@ import pickle
 # redis-server
 
 # Force reconfiguration so our app logs show even when uvicorn
-# sets up logging before importing this module.
-logging.basicConfig(level=logging.INFO, force=True)
+# sets up logging before importing this module. Use DEBUG level so
+# we can inspect raw Gmail responses during development.
+logging.basicConfig(level=logging.DEBUG, force=True)
 SCOPES = [os.getenv("GMAIL_SCOPE")]
 gmail_service = None  # global handle
 
