@@ -173,6 +173,27 @@ def find_text_plain_part(payload):
             return found
     return None
 
+def find_largest_text_plain_part(payload):
+    """Return the largest text/plain MIME part available."""
+    best_part = None
+    best_size = -1
+
+    def _walk(part):
+        nonlocal best_part, best_size
+        if (
+            part.get("mimeType") == "text/plain"
+            and "data" in part.get("body", {})
+        ):
+            size = int(part.get("body", {}).get("size", 0))
+            if size > best_size:
+                best_part = part
+                best_size = size
+        for child in part.get("parts", []):
+            _walk(child)
+
+    _walk(payload)
+    return best_part
+
 
 def log_mime_structure(payload, depth=0):
     indent = "  " * depth
@@ -198,7 +219,8 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         log_mime_structure(payload)
 
         body = ""
-        text_part = find_text_plain_part(payload)
+        # Prefer the largest text/plain part in case of multiple alternatives
+        text_part = find_largest_text_plain_part(payload)
         if text_part:
             try:
                 data = text_part["body"]["data"]
@@ -232,17 +254,19 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
             db.commit()
             db.refresh(newsletter)
 
+        # Remove any header metadata that might be embedded in the part
+        if body.startswith("Content-Type:"):
+            split_idx = body.find("\n\n")
+            if split_idx != -1:
+                body = body[split_idx + 2 :]
+
         # Extract meaningful content between header and footer
         lines = body.splitlines()
         content_lines = []
-        in_content = False
         for i in range(len(lines)):
             line = lines[i]
-            if not in_content:
-                if 'Content-Type: text/plain; charset="UTF-8"' in line:
-                    in_content = True
-                continue
-            if i + 1 < len(lines) and lines[i].strip().lower() == "more from bloomberg" and lines[i + 1].strip().lower().startswith("enjoying"):
+            # Stop just before the common footer
+            if line.strip().lower() == "more from bloomberg":
                 break
             content_lines.append(line)
 
@@ -262,3 +286,4 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         db.rollback()
         logging.exception(f"Error extracting text for message_id: {message_id}")
         return None
+
