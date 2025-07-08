@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { ChatMessage } from "@/lib/types";
@@ -13,8 +12,7 @@ interface AskResp {
 }
 
 export default function ChatPanel() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const { context } = useChatContext();
+  const { context, messages, pushMessage } = useChatContext();
 
   interface AskPayload {
     query: string;
@@ -37,7 +35,7 @@ export default function ChatPanel() {
         source: data.data?.source,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
-      setMessages((msgs) => [...msgs, reply]);
+      pushMessage(reply);
     }
   });
 
@@ -48,7 +46,7 @@ export default function ChatPanel() {
       text,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     };
-    setMessages((msgs) => [...msgs, userMsg]);
+    pushMessage(userMsg);
     ask.mutate({ text, mode });
   };
 

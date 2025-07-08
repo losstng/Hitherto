@@ -10,7 +10,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
   const extract = useExtract(n.message_id);
   const chunk = useChunk(n.message_id);
   const embed = useEmbed(n.message_id);
-  const { setContext } = useChatContext();
+  const { setContext, pushMessage } = useChatContext();
   const [raw, setRaw] = useState<string | null>(null);
   const [category, setCategory] = useState(n.category ?? "");
 
@@ -44,7 +44,16 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         <button
           onClick={async () => {
             const { data } = await api.get(`/ingest/raw_text/${n.message_id}`);
-            setRaw(data.data?.text ?? "");
+            const text = data.data?.text ?? "";
+            setRaw(text);
+            if (data.success) {
+              pushMessage({
+                id: `${Date.now()}-raw`,
+                role: "assistant",
+                text,
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              });
+            }
           }}
           disabled={!extract.isSuccess}
           className="btn"

@@ -7,6 +7,7 @@ import json
 from ..database import get_db
 from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
+from ..services.cleaning import clean_bloomberg_newsletter
 from ..services.vector import embed_chunked_newsletter
 from ..services.token_counter import compute_token_count_simple
 from .. import main
@@ -209,8 +210,9 @@ def get_raw_text(message_id: str, db: Session = Depends(get_db)):
     if not n or not n.extracted_text:
         logger.warning(f"No text available for {message_id}")
         return ApiResponse(success=False, error="Text not available")
-    logger.debug(f"Returning {len(n.extracted_text)} characters of text")
-    return ApiResponse(success=True, data={"text": n.extracted_text})
+    cleaned = clean_bloomberg_newsletter(n.extracted_text)
+    logger.debug(f"Returning {len(cleaned)} characters of text")
+    return ApiResponse(success=True, data={"text": cleaned})
 
 @router.get("/chunked_text/{message_id}", response_model=ApiResponse)
 def get_chunked_text(message_id: str, db: Session = Depends(get_db)):

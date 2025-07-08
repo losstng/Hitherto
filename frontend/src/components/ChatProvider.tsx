@@ -1,5 +1,6 @@
 "use client";
 import React, { createContext, useState, useContext } from "react";
+import { ChatMessage } from "@/lib/types";
 
 export interface ChatCtx {
   messageId: string;
@@ -9,6 +10,8 @@ export interface ChatCtx {
 interface State {
   context: ChatCtx | null;
   setContext: (c: ChatCtx) => void;
+  messages: ChatMessage[];
+  pushMessage: (m: ChatMessage) => void;
 }
 
 const Ctx = createContext<State | undefined>(undefined);
@@ -21,5 +24,11 @@ export function useChatContext() {
 
 export default function ChatProvider({ children }: { children: React.ReactNode }) {
   const [context, setContext] = useState<ChatCtx | null>(null);
-  return <Ctx.Provider value={{ context, setContext }}>{children}</Ctx.Provider>;
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const pushMessage = (m: ChatMessage) => setMessages((msgs) => [...msgs, m]);
+  return (
+    <Ctx.Provider value={{ context, setContext, messages, pushMessage }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
