@@ -157,6 +157,7 @@ def fetch_raw_email(service, message_id: str):
             .execute()
         )
         logging.debug(f"Fetched raw message for {message_id}")
+        logging.debug("Gmail API response: %s", json.dumps(msg, indent=2)[:1000])
         return msg
     except Exception:
         logging.exception(f"Failed to fetch raw message for {message_id}")

@@ -120,7 +120,9 @@ def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
             logger.warning(f"Failed to fetch raw message for {message_id}")
             return ApiResponse(success=False, error="Could not fetch raw message")
 
-        logger.debug(f"Raw message size: {len(json.dumps(raw_msg))} bytes")
+        json_raw = json.dumps(raw_msg, indent=2)
+        logger.debug(f"Raw message size: {len(json_raw)} bytes")
+        logger.debug(f"Gmail API message for {message_id}: {json_raw[:1000]}")
         return ApiResponse(success=True, data={"raw": raw_msg})
     except Exception as e:
         logger.exception("Error retrieving raw Gmail message")
