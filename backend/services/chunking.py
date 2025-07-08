@@ -1,31 +1,52 @@
-from ..models import Newsletter
+from __future__ import annotations
+
+import logging
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from sqlalchemy.orm import Session
-import logging
 
-def chunk_newsletter_text(db: Session, message_id: str, chunk_size=500, chunk_overlap=100):
+from ..models import Newsletter
+
+
+logger = logging.getLogger(__name__)
+
+
+def chunk_newsletter_text(
+    db: Session,
+    message_id: str,
+    chunk_size: int = 500,
+    chunk_overlap: int = 100,
+) -> Newsletter | None:
+    """Split extracted text into overlapping chunks and persist them."""
+    logger.debug(
+        "chunk_newsletter_text called with message_id=%s chunk_size=%d chunk_overlap=%d",
+        message_id,
+        chunk_size,
+        chunk_overlap,
+    )
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
         if not newsletter:
-            logging.warning(f"No newsletter found with message_id: {message_id}")
+            logger.warning("No newsletter found with message_id: %s", message_id)
             return None
         if not newsletter.extracted_text:
-            logging.warning(f"Newsletter with message_id {message_id} has no extracted text.")
+            logger.warning(
+                "Newsletter with message_id %s has no extracted text.", message_id
+            )
             return None
 
         try:
             splitter = RecursiveCharacterTextSplitter(
                 separators=["\n\n", "\n", ".", " "],
                 chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
+                chunk_overlap=chunk_overlap,
             )
             docs = [Document(page_content=newsletter.extracted_text)]
             chunks = splitter.split_documents(docs)
             chunked_payload = [c.page_content for c in chunks]
-        except Exception as split_err:
-            logging.error(f"Error during text splitting: {split_err}")
+        except Exception as split_err:  # pragma: no cover - langchain internals
+            logger.error("Error during text splitting: %s", split_err)
             return None
 
         try:
@@ -34,11 +55,18 @@ def chunk_newsletter_text(db: Session, message_id: str, chunk_size=500, chunk_ov
             db.refresh(newsletter)
         except SQLAlchemyError as db_err:
             db.rollback()
-            logging.error(f"Database update failed for message_id {message_id}: {db_err}")
+            logger.error(
+                "Database update failed for message_id %s: %s", message_id, db_err
+            )
             return None
 
+        logger.debug("Chunking produced %d chunks", len(chunked_payload))
         return newsletter
 
-    except Exception as e:
-        logging.exception(f"Unexpected error while chunking newsletter with ID {message_id}: {e}")
+    except Exception as e:  # pragma: no cover - defensive
+        logger.exception(
+            "Unexpected error while chunking newsletter with ID %s: %s",
+            message_id,
+            e,
+        )
         return None

@@ -6,7 +6,15 @@ from ..models import Newsletter  # assuming your ORM model is named Newsletter
 from pathlib import Path
 import logging, os
 
-def embed_chunked_newsletter(db: Session, message_id: str, persist_dir="db/faiss_store"):
+def embed_chunked_newsletter(
+    db: Session, message_id: str, persist_dir: str = "db/faiss_store"
+) -> FAISS | None:
+    logger = logging.getLogger(__name__)
+    logger.debug(
+        "embed_chunked_newsletter called with message_id=%s persist_dir=%s",
+        message_id,
+        persist_dir,
+    )
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
         if not newsletter:
@@ -37,7 +45,10 @@ def embed_chunked_newsletter(db: Session, message_id: str, persist_dir="db/faiss
             return None
         logging.info(f"Embedded newsletter {message_id} stored in category directory: {category_dir}")
 
-        logging.info(f"Successfully embedded and stored newsletter {message_id} into {persist_dir}")
+        logging.info(
+            f"Successfully embedded and stored newsletter {message_id} into {persist_dir}"
+        )
+        logger.debug("FAISS files stored under %s", category_dir)
         return vector_db
 
     except Exception as e:
