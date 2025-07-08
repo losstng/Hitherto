@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 import logging
+import json
 from ..database import get_db
 from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
@@ -11,7 +12,11 @@ from ..services.token_counter import compute_token_count_simple
 from .. import main
 from ..models import Newsletter
 
-from ..services.email_service import extract_bloomberg_email_text, scan_bloomberg_emails
+from ..services.email_service import (
+    extract_bloomberg_email_text,
+    scan_bloomberg_emails,
+    fetch_raw_email,
+)
 from pathlib import Path
 
 
@@ -103,33 +108,22 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
 # preprocess
 @router.post("/extract_text/{message_id}", response_model=ApiResponse)
 def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
-    logger.info(f"Extracting text for newsletter {message_id}")
+    """Temporarily return the raw Gmail API message for debugging."""
+    logger.info(f"Fetching raw Gmail message for {message_id}")
     try:
         if main.gmail_service is None:
             logger.error("Gmail service is not initialized")
             raise RuntimeError("Gmail service is not initialized")
 
-        # ⇣ helper already does the “skip-if-present” logic
-        newsletter = extract_bloomberg_email_text(
-            service=main.gmail_service, db=db, message_id=message_id
-        )
-        if newsletter is None:
-            logger.warning(f"Extraction returned no content for {message_id}")
-            return ApiResponse(success=False, error="Extraction failed or no content.")
+        raw_msg = fetch_raw_email(main.gmail_service, message_id)
+        if raw_msg is None:
+            logger.warning(f"Failed to fetch raw message for {message_id}")
+            return ApiResponse(success=False, error="Could not fetch raw message")
 
-        logger.info(f"Successfully extracted text for {message_id}")
-        return ApiResponse(
-            success=True,
-            data={
-                "message_id": newsletter.message_id,
-                "title":       newsletter.title,
-                "category":    newsletter.category,
-                "excerpt":     newsletter.extracted_text[:250] + "…",
-                "has_text":    True,
-            },
-        )
+        logger.debug(f"Raw message size: {len(json.dumps(raw_msg))} bytes")
+        return ApiResponse(success=True, data={"raw": raw_msg})
     except Exception as e:
-        logger.exception("Error extracting Bloomberg content")
+        logger.exception("Error retrieving raw Gmail message")
         return ApiResponse(success=False, error=str(e))
 
 @router.post("/chunk/{message_id}", response_model=ApiResponse)

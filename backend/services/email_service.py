@@ -147,6 +147,22 @@ def scan_bloomberg_emails(service, db: Session):
         return []
 
 
+def fetch_raw_email(service, message_id: str):
+    """Return the full Gmail API response for the given message."""
+    try:
+        msg = (
+            service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+        logging.debug(f"Fetched raw message for {message_id}")
+        return msg
+    except Exception:
+        logging.exception(f"Failed to fetch raw message for {message_id}")
+        return None
+
+
 def extract_bloomberg_email_text(service, db: Session, message_id: str):
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
