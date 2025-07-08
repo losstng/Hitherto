@@ -147,6 +147,61 @@ def scan_bloomberg_emails(service, db: Session):
         return []
 
 
+def fetch_raw_email(service, message_id: str):
+    """Return the full Gmail API response for the given message."""
+    try:
+        msg = (
+            service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+        logging.info(f"Fetched raw message for {message_id}")
+        logging.info("Gmail API response for %s: %s", message_id, json.dumps(msg, indent=2)[:1000])
+        return msg
+    except Exception:
+        logging.exception(f"Failed to fetch raw message for {message_id}")
+        return None
+
+
+def find_text_plain_part(payload):
+    if payload.get("mimeType") == "text/plain" and "body" in payload and "data" in payload["body"]:
+        return payload
+    for part in payload.get("parts", []):
+        found = find_text_plain_part(part)
+        if found:
+            return found
+    return None
+
+def find_largest_text_plain_part(payload):
+    """Return the largest text/plain MIME part available."""
+    best_part = None
+    best_size = -1
+
+    def _walk(part):
+        nonlocal best_part, best_size
+        if (
+            part.get("mimeType") == "text/plain"
+            and "data" in part.get("body", {})
+        ):
+            size = int(part.get("body", {}).get("size", 0))
+            if size > best_size:
+                best_part = part
+                best_size = size
+        for child in part.get("parts", []):
+            _walk(child)
+
+    _walk(payload)
+    return best_part
+
+
+def log_mime_structure(payload, depth=0):
+    indent = "  " * depth
+    logging.debug(f"{indent}- {payload.get('mimeType', 'unknown')}")
+    for part in payload.get("parts", []):
+        log_mime_structure(part, depth + 1)
+
+
 def extract_bloomberg_email_text(service, db: Session, message_id: str):
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
@@ -161,59 +216,46 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         payload = msg.get("payload", {})
         headers = {h["name"]: h["value"] for h in payload.get("headers", [])}
 
+        log_mime_structure(payload)
+
         body = ""
-        if "parts" in payload:
-            for part in payload["parts"]:
-                if part.get("mimeType") == "text/plain" and "data" in part.get("body", {}):
-                    try:
-                        data = part["body"]["data"]
-                        raw_bytes = base64.urlsafe_b64decode(data)
-                        body = quopri.decodestring(raw_bytes).decode("utf-8", errors="replace")
-                        break
-                    except Exception as e:
-                        logging.warning(f"Failed to decode body of {message_id}: {e}")
-                        return None
+        # Prefer the largest text/plain part in case of multiple alternatives
+        text_part = find_largest_text_plain_part(payload)
+        if text_part:
+            try:
+                data = text_part["body"]["data"]
+                raw_bytes = base64.urlsafe_b64decode(data)
+                body = quopri.decodestring(raw_bytes).decode("utf-8", errors="replace")
+            except Exception as e:
+                logging.warning(f"Failed to decode body of {message_id}: {e}")
+                return None
+        else:
+            logging.warning(f"No text/plain part found in message {message_id}")
+            return None
 
         if not body:
             logging.warning(f"No text/plain body found for message_id: {message_id}")
             return None
 
-        # Category extraction from body
-        category_updated = False
-        for line in body.splitlines():
-            line = line.strip()
-            if line.endswith("=20"):
-                raw_category = line.replace("=20", "").strip()
-                newsletter.category = raw_category.lower().replace(" ", "_")
-                logging.debug(
-                    f"Backfilled category '{newsletter.category}' for {newsletter.message_id}"
-                )
-                category_updated = True
-                break
 
-        if category_updated:
-            db.commit()
-            db.refresh(newsletter)
 
-        # Parsing logic for extracting useful content
+        # Remove any header metadata that might be embedded in the part
+        if body.startswith("Content-Type:"):
+            split_idx = body.find("\n\n")
+            if split_idx != -1:
+                body = body[split_idx + 2 :]
+
+        # Extract meaningful content between header and footer
         lines = body.splitlines()
         content_lines = []
-        in_content = False
         for i in range(len(lines)):
             line = lines[i]
-
-            if not in_content:
-                if 'Content-Type: text/plain; charset="UTF-8"' in line:
-                    in_content = True
-                continue
-
-            if i + 1 < len(lines) and lines[i].strip().lower() == "more from bloomberg" and lines[i + 1].strip().lower().startswith("enjoying"):
+            # Stop just before the common footer
+            if line.strip().lower() == "more from bloomberg":
                 break
-
             content_lines.append(line)
 
         extracted_text = "\n".join(content_lines).strip()
-
         if not extracted_text:
             logging.warning(f"No content extracted for {message_id}")
             return None
@@ -222,6 +264,22 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         db.commit()
         db.refresh(newsletter)
 
+        # Derive category from stored extracted_text if missing
+        if newsletter.category is None and newsletter.extracted_text:
+            logging.debug(
+                f"Deriving category from stored text for {newsletter.message_id}"
+            )
+            for line in newsletter.extracted_text.splitlines():
+                line = line.strip()
+                if line:
+                    newsletter.category = line.lower().replace(" ", "_")
+                    db.commit()
+                    db.refresh(newsletter)
+                    logging.debug(
+                        f"Backfilled category '{newsletter.category}' for {newsletter.message_id}"
+                    )
+                    break
+
         logging.info(f"Extracted and updated content for message_id: {message_id}")
         return newsletter
 
@@ -229,3 +287,36 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         db.rollback()
         logging.exception(f"Error extracting text for message_id: {message_id}")
         return None
+
+
+def backfill_categories_from_text(db: Session):
+    """Fill missing categories using the first line of extracted text."""
+    logging.info("Starting category backfill from extracted_text")
+
+    newsletters = db.query(Newsletter).filter(
+        Newsletter.category == None,
+        Newsletter.extracted_text != None,
+    ).all()
+
+    logging.debug(f"{len(newsletters)} newsletters need category backfill from text")
+
+    for newsletter in newsletters:
+        try:
+            for line in newsletter.extracted_text.splitlines():
+                line = line.strip()
+                if line:
+                    category = line.lower().replace(" ", "_")
+                    newsletter.category = category
+                    logging.debug(
+                        f"Backfilled category '{category}' for message {newsletter.message_id}"
+                    )
+                    break
+        except Exception as e:
+            logging.warning(
+                f"Failed to backfill for message {newsletter.message_id}: {e}"
+            )
+            continue
+
+    db.commit()
+    logging.info("Finished category backfill from extracted_text")
+
