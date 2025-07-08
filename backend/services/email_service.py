@@ -237,22 +237,7 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
             logging.warning(f"No text/plain body found for message_id: {message_id}")
             return None
 
-        # Extract category from body
-        category_updated = False
-        for line in body.splitlines():
-            line = line.strip()
-            if line.endswith("=20"):
-                raw_category = line.replace("=20", "").strip()
-                newsletter.category = raw_category.lower().replace(" ", "_")
-                logging.debug(
-                    f"Backfilled category '{newsletter.category}' for {newsletter.message_id}"
-                )
-                category_updated = True
-                break
 
-        if category_updated:
-            db.commit()
-            db.refresh(newsletter)
 
         # Remove any header metadata that might be embedded in the part
         if body.startswith("Content-Type:"):
@@ -279,6 +264,22 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         db.commit()
         db.refresh(newsletter)
 
+        # Derive category from stored extracted_text if missing
+        if newsletter.category is None and newsletter.extracted_text:
+            logging.debug(
+                f"Deriving category from stored text for {newsletter.message_id}"
+            )
+            for line in newsletter.extracted_text.splitlines():
+                line = line.strip()
+                if line:
+                    newsletter.category = line.lower().replace(" ", "_")
+                    db.commit()
+                    db.refresh(newsletter)
+                    logging.debug(
+                        f"Backfilled category '{newsletter.category}' for {newsletter.message_id}"
+                    )
+                    break
+
         logging.info(f"Extracted and updated content for message_id: {message_id}")
         return newsletter
 
@@ -286,4 +287,36 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         db.rollback()
         logging.exception(f"Error extracting text for message_id: {message_id}")
         return None
+
+
+def backfill_categories_from_text(db: Session):
+    """Fill missing categories using the first line of extracted text."""
+    logging.info("Starting category backfill from extracted_text")
+
+    newsletters = db.query(Newsletter).filter(
+        Newsletter.category == None,
+        Newsletter.extracted_text != None,
+    ).all()
+
+    logging.debug(f"{len(newsletters)} newsletters need category backfill from text")
+
+    for newsletter in newsletters:
+        try:
+            for line in newsletter.extracted_text.splitlines():
+                line = line.strip()
+                if line:
+                    category = line.lower().replace(" ", "_")
+                    newsletter.category = category
+                    logging.debug(
+                        f"Backfilled category '{category}' for message {newsletter.message_id}"
+                    )
+                    break
+        except Exception as e:
+            logging.warning(
+                f"Failed to backfill for message {newsletter.message_id}: {e}"
+            )
+            continue
+
+    db.commit()
+    logging.info("Finished category backfill from extracted_text")
 
