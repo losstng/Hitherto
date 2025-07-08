@@ -59,3 +59,9 @@ pytest -q
 
 These tests cover basic debug utilities at the moment.
 
+### Development cleanup
+
+Python bytecode is disabled via the `.envrc` file which sets
+`PYTHONDONTWRITEBYTECODE=1`. If any `__pycache__` directories appear,
+run `scripts/clean_pycache.sh`.
+
