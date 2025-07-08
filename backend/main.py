@@ -14,7 +14,9 @@ import pickle
 # Run with: python -m uvicorn backend.main:app --reload --log-level debug
 # redis-server
 
-logging.basicConfig(level=logging.INFO)
+# Force reconfiguration so our app logs show even when uvicorn
+# sets up logging before importing this module.
+logging.basicConfig(level=logging.INFO, force=True)
 SCOPES = [os.getenv("GMAIL_SCOPE")]
 gmail_service = None  # global handle
 
