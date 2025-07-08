@@ -199,12 +199,13 @@ def get_chunked_text(message_id: str, db: Session = Depends(get_db)):
     return ApiResponse(success=True, data={"chunks": n.chunked_text})
 
 # review
-@router.post("/tokenize/{message_id}")
+@router.post("/tokenize/{message_id}", response_model=ApiResponse)
 def tokenize_newsletter(message_id: str, db: Session = Depends(get_db)):
+    """Return the token count for the given newsletter."""
     logger.info(f"Tokenizing newsletter {message_id}")
     count = compute_token_count_simple(db, message_id)
     if count is None:
         logger.error(f"Tokenization failed for {message_id}")
         return ApiResponse(success=False, error="Tokenization failed")
     logger.debug(f"Token count for {message_id}: {count}")
-    return count
+    return ApiResponse(success=True, data={"message_id": message_id, "token_count": count})
