@@ -18,6 +18,8 @@ SCOPES = [os.getenv("GMAIL_SCOPE")]
 
 
 def get_authenticated_gmail_service():
+    """Return an authenticated Gmail service or ``None`` on failure."""
+    logging.debug("Entering get_authenticated_gmail_service")
     logging.basicConfig(level=logging.INFO)
     creds = None
 
@@ -68,6 +70,7 @@ def get_authenticated_gmail_service():
             logging.info("Successfully accessed Gmail API.")
         except Exception:
             logging.exception("Test Gmail API call failed")
+        logging.debug("Gmail service successfully built")
         return service
     except Exception as e:
         logging.exception(f"Failed to build Gmail service: {e}")
@@ -75,6 +78,7 @@ def get_authenticated_gmail_service():
 
 def scan_bloomberg_emails(service, db: Session):
     logging.info("Starting scan_bloomberg_emails")
+    logging.debug("Service: %s, DB Session: %s", service, db)
     try:
         logging.debug("Listing Bloomberg messages from Gmail")
         results = service.users().messages().list(userId='me', q="from:noreply@news.bloomberg.com").execute()
@@ -139,6 +143,7 @@ def scan_bloomberg_emails(service, db: Session):
 
         db.commit()
         logging.info(f"scan_bloomberg_emails stored {len(stored)} new newsletters")
+        logging.debug("Stored entries: %s", [n.message_id for n in stored])
         return stored
 
     except Exception as e:
@@ -149,6 +154,7 @@ def scan_bloomberg_emails(service, db: Session):
 
 def fetch_raw_email(service, message_id: str):
     """Return the full Gmail API response for the given message."""
+    logging.debug("Fetching raw email %s", message_id)
     try:
         msg = (
             service.users()
@@ -203,6 +209,7 @@ def log_mime_structure(payload, depth=0):
 
 
 def extract_bloomberg_email_text(service, db: Session, message_id: str):
+    logging.debug("Extracting newsletter text for %s", message_id)
     try:
         newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
         if not newsletter:
@@ -281,6 +288,7 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
                     break
 
         logging.info(f"Extracted and updated content for message_id: {message_id}")
+        logging.debug("Stored text length for %s: %d", message_id, len(extracted_text))
         return newsletter
 
     except Exception as e:
@@ -292,6 +300,7 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
 def backfill_categories_from_text(db: Session):
     """Fill missing categories using the first line of extracted text."""
     logging.info("Starting category backfill from extracted_text")
+    logging.debug("DB Session: %s", db)
 
     newsletters = db.query(Newsletter).filter(
         Newsletter.category == None,
@@ -318,5 +327,6 @@ def backfill_categories_from_text(db: Session):
             continue
 
     db.commit()
+    logging.debug("Committed category updates for %d newsletters", len(newsletters))
     logging.info("Finished category backfill from extracted_text")
 

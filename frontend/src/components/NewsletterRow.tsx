@@ -12,14 +12,25 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
   const embed = useEmbed(n.message_id);
   const { setContext } = useChatContext();
   const [raw, setRaw] = useState<string | null>(null);
+  const [category, setCategory] = useState(n.category ?? "");
 
   return (
-    <>
+    <> 
     <tr className="border-b">
       <td className="p-2">{n.title}</td>
+      <td className="p-2">{category}</td>
       <td className="p-2">{new Date(n.received_at).toLocaleString()}</td>
       <td className="p-2 space-x-1">
-        <button onClick={() => extract.mutate()} className="btn">Extract</button>
+        <button
+          onClick={() =>
+            extract.mutate(undefined, {
+              onSuccess: (data) => setCategory(data.category),
+            })
+          }
+          className="btn"
+        >
+          Extract
+        </button>
         <button
           onClick={async () => {
             await chunk.mutateAsync();
@@ -54,7 +65,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
     </tr>
     {raw && (
       <tr>
-        <td colSpan={3} className="p-2 bg-gray-50 text-sm whitespace-pre-wrap">
+        <td colSpan={4} className="p-2 bg-gray-50 text-sm whitespace-pre-wrap">
           {raw}
         </td>
       </tr>

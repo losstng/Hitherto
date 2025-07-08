@@ -21,6 +21,21 @@ npm install
 cd ..
 ```
 
+### Development notes
+
+To avoid unnecessary Python bytecode during development, this project
+uses an `.envrc` file that sets `PYTHONDONTWRITEBYTECODE=1`.
+If you have [direnv](https://direnv.net/) installed, run `direnv allow`
+after cloning the repo so Python will skip generating `__pycache__`
+folders. You can also manually source the file:
+
+```bash
+source .envrc
+```
+
+When needed, run `scripts/clean_pycache.sh` to remove any lingering
+`__pycache__` directories.
+
 ## Running the backend
 
 The server reads the `FASTAPI_PORT` environment variable (falling back to

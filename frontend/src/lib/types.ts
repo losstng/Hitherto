@@ -10,6 +10,7 @@ export interface NewsletterLite {
   title: string;
   message_id: string;
   received_at: string;
+  category?: string | null;
 }
 
 export type ReloadResp  = { new_entries: number };

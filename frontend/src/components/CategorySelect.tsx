@@ -1,5 +1,6 @@
 // src/components/CategorySelect.tsx
 "use client";
+import { useCategories } from "@/hooks/useIngest";
 export default function CategorySelect({
   value,
   onChange,
@@ -7,6 +8,8 @@ export default function CategorySelect({
   value: string;
   onChange: (c: string) => void;
 }) {
+  const { data: categories } = useCategories();
+  const sorted = categories?.slice().sort((a, b) => a.localeCompare(b));
   return (
     <select
       value={value}
@@ -14,9 +17,11 @@ export default function CategorySelect({
       className="border rounded px-2 py-1"
     >
       <option value="">All categories</option>
-      <option value="economics_daily">economics_daily</option>
-      <option value="supply_lines">supply_lines</option>
-      {/* add more */}
+      {sorted?.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
     </select>
   );
 }

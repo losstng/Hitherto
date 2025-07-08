@@ -37,3 +37,13 @@ export const useCategory = (category: string) =>
       return data.data!;
     },
   });
+
+export const useCategories = () =>
+  useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<string[]>>("/ingest/categories");
+      if (!data.success) throw new Error(data.error);
+      return data.data!;
+    },
+  });

@@ -8,6 +8,7 @@ export default function NewsletterTable({ data }: { data: NewsletterLite[] }) {
       <thead>
         <tr className="bg-gray-100">
           <th className="p-2 text-left">Title</th>
+          <th className="p-2 text-left">Category</th>
           <th className="p-2 text-left">Date</th>
           <th className="p-2 text-left">Actions</th>
         </tr>

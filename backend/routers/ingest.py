@@ -92,6 +92,7 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
                 "title": n.title,
                 "message_id": n.message_id,
                 "received_at": n.received_at,
+                "category": n.category,
             }
             for n in results
         ]
@@ -102,6 +103,25 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
         return ApiResponse(success=True, data=filtered)
     except Exception as e:
         logger.exception("Failed to filter newsletters by category")
+        return ApiResponse(success=False, error=str(e))
+
+
+@router.get("/categories", response_model=ApiResponse)
+def get_categories(db: Session = Depends(get_db)):
+    """Return a list of distinct newsletter categories."""
+    logger.info("Fetching unique newsletter categories")
+    try:
+        categories = (
+            db.query(Newsletter.category)
+            .filter(Newsletter.category.isnot(None))
+            .distinct()
+            .all()
+        )
+        names = [c[0] for c in categories if c[0]]
+        logger.debug("Found %d categories", len(names))
+        return ApiResponse(success=True, data=names)
+    except Exception as e:
+        logger.exception("Failed to fetch categories")
         return ApiResponse(success=False, error=str(e))
 
 
