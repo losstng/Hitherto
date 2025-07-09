@@ -2,9 +2,11 @@ from langchain.schema import Document
 from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from sqlalchemy.orm import Session
-from ..models import Newsletter  # assuming your ORM model is named Newsletter
+from ..models import Newsletter
 from pathlib import Path
-import logging, os
+from datetime import datetime
+import logging
+import os
 
 def embed_chunked_newsletter(
     db: Session, message_id: str, persist_dir: str = "db/faiss_store"
@@ -26,18 +28,39 @@ def embed_chunked_newsletter(
         if not isinstance(newsletter.chunked_text, list) or not all(isinstance(c, str) for c in newsletter.chunked_text):
             logging.error("Chunked text is not in expected format.")
             return None
-        # Prepare documents
-        documents = [Document(page_content=chunk) for chunk in newsletter.chunked_text]
+        # Prepare documents with metadata and unique ids
+        documents = []
+        ids = []
+        for idx, chunk in enumerate(newsletter.chunked_text):
+            doc_id = idx
+            ids.append(doc_id)
+            documents.append(
+                Document(
+                    page_content=chunk,
+                    metadata={
+                        "id": f"{newsletter.message_id}-{idx}",
+                        "message_id": newsletter.message_id,
+                        "category": newsletter.category,
+                        "received_at": newsletter.received_at.isoformat() if newsletter.received_at else None,
+                        "chunk_index": idx,
+                    },
+                )
+            )
 
         # Initialize embedding model
         embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-        # Embed and store
-        vector_db = FAISS.from_documents(documents, embedding_model)
+        # Embed and store using explicit ids so vectors can be referenced later
+        vector_db = FAISS.from_documents(documents, embedding_model, ids=ids)
 
-        # Dynamically assign persist_dir based on category
+        # Dynamically assign persist_dir based on category and month for sharding
         category = (newsletter.category or "uncategorized").lower().replace(" ", "_")
-        category_dir = os.path.join(persist_dir, category)
+        month = (
+            newsletter.received_at.strftime("%Y-%m")
+            if isinstance(newsletter.received_at, datetime)
+            else "unknown"
+        )
+        category_dir = os.path.join(persist_dir, category, month)
         Path(category_dir).mkdir(parents=True, exist_ok=True)
         vector_db.save_local(category_dir)
         if not os.path.exists(os.path.join(category_dir, "index.faiss")):
