@@ -7,6 +7,7 @@ import json
 from ..database import get_db
 from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
+from ..services.cleaning import clean_bloomberg_newsletter
 from ..services.vector import embed_chunked_newsletter
 from ..services.token_counter import compute_token_count_simple
 from .. import main
@@ -203,14 +204,22 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
 # ----- Review ------------------------------------------------------------
 @router.get("/raw_text/{message_id}", response_model=ApiResponse)
 def get_raw_text(message_id: str, db: Session = Depends(get_db)):
-    """Return previously extracted plain text for a newsletter."""
+    """Return cleaned and chunked text for a newsletter."""
     logger.info(f"Fetching raw text for {message_id}")
-    n = db.query(Newsletter).filter_by(message_id=message_id).first()
-    if not n or not n.extracted_text:
+    newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
+    if not newsletter or not newsletter.extracted_text:
         logger.warning(f"No text available for {message_id}")
         return ApiResponse(success=False, error="Text not available")
-    logger.debug(f"Returning {len(n.extracted_text)} characters of text")
-    return ApiResponse(success=True, data={"text": n.extracted_text})
+
+    if not newsletter.chunked_text:
+        logger.debug("Chunked text missing; generating now")
+        newsletter = chunk_newsletter_text(db, message_id)
+        if not newsletter:
+            logger.error(f"Chunking failed for {message_id}")
+            return ApiResponse(success=False, error="Chunking failed")
+
+    logger.debug(f"Returning {len(newsletter.chunked_text)} chunks")
+    return ApiResponse(success=True, data={"chunks": newsletter.chunked_text})
 
 @router.get("/chunked_text/{message_id}", response_model=ApiResponse)
 def get_chunked_text(message_id: str, db: Session = Depends(get_db)):

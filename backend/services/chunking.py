@@ -7,6 +7,7 @@ from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from ..models import Newsletter
+from .cleaning import clean_bloomberg_newsletter
 
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,8 @@ def chunk_newsletter_text(
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
             )
-            docs = [Document(page_content=newsletter.extracted_text)]
+            cleaned = clean_bloomberg_newsletter(newsletter.extracted_text)
+            docs = [Document(page_content=cleaned)]
             chunks = splitter.split_documents(docs)
             chunked_payload = [c.page_content for c in chunks]
         except Exception as split_err:  # pragma: no cover - langchain internals

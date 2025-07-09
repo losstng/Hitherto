@@ -10,8 +10,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
   const extract = useExtract(n.message_id);
   const chunk = useChunk(n.message_id);
   const embed = useEmbed(n.message_id);
-  const { setContext } = useChatContext();
-  const [raw, setRaw] = useState<string | null>(null);
+  const { setContext, pushMessage } = useChatContext();
   const [category, setCategory] = useState(n.category ?? "");
 
   return (
@@ -44,7 +43,16 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         <button
           onClick={async () => {
             const { data } = await api.get(`/ingest/raw_text/${n.message_id}`);
-            setRaw(data.data?.text ?? "");
+            const chunks: string[] = data.data?.chunks ?? [];
+            const text = chunks.join("\n\n");
+            if (data.success) {
+              pushMessage({
+                id: `${Date.now()}-raw`,
+                role: "assistant",
+                text,
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              });
+            }
           }}
           disabled={!extract.isSuccess}
           className="btn"
@@ -63,13 +71,6 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         </button>
       </td>
     </tr>
-    {raw && (
-      <tr>
-        <td colSpan={4} className="p-2 bg-gray-50 text-sm whitespace-pre-wrap">
-          {raw}
-        </td>
-      </tr>
-    )}
     </>
   );
 }
