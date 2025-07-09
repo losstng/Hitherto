@@ -1,4 +1,7 @@
 "use client";
+import { useState } from "react";
+import { DayPicker, DateRange } from "react-day-picker";
+import "react-day-picker/dist/style.css";
 
 export default function DateRangeFilter({
   start,
@@ -11,21 +14,37 @@ export default function DateRangeFilter({
   onChangeStart: (d: string) => void;
   onChangeEnd: (d: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const selected: DateRange | undefined =
+    start ? { from: new Date(start), to: end ? new Date(end) : undefined } : undefined;
   return (
-    <div className="flex items-center gap-2">
-      <input
-        type="date"
-        value={start}
-        onChange={(e) => onChangeStart(e.target.value)}
+    <div className="relative">
+      <button
+        type="button"
         className="border rounded px-2 py-1"
-      />
-      <span>to</span>
-      <input
-        type="date"
-        value={end}
-        onChange={(e) => onChangeEnd(e.target.value)}
-        className="border rounded px-2 py-1"
-      />
+        onClick={() => setOpen(!open)}
+      >
+        {selected?.from
+          ? `${selected.from.toLocaleDateString()}${selected.to ? ` – ${selected.to.toLocaleDateString()}` : ""}`
+          : "Select date"}
+      </button>
+      {open && (
+        <div className="absolute z-10 bg-white shadow p-2">
+          <DayPicker
+            mode="range"
+            selected={selected}
+            onSelect={(range) => {
+              if (!range) {
+                onChangeStart("");
+                onChangeEnd("");
+                return;
+              }
+              onChangeStart(range.from?.toISOString().slice(0, 10) ?? "");
+              onChangeEnd(range.to?.toISOString().slice(0, 10) ?? "");
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
