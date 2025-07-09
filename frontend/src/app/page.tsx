@@ -2,14 +2,17 @@
 import { useState } from "react";
 import ReloadButton from "@/components/ReloadButton";
 import CategorySelect from "@/components/CategorySelect";
+import DateRangeFilter from "@/components/DateRangeFilter";
 import NewsletterTable from "@/components/NewsletterTable";
 import Sidebar from "@/components/Sidebar";
 import ChatPanel from "@/components/ChatPanel";
-import { useCategory } from "@/hooks/useIngest";
+import { useFilters } from "@/hooks/useIngest";
 
 export default function EmailsPage() {
   const [cat, setCat] = useState("");
-  const { data, isFetching } = useCategory(cat);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const { data, isFetching } = useFilters(cat, start, end);
 
   return (
     <div className="flex w-full h-screen overflow-hidden">
@@ -24,6 +27,12 @@ export default function EmailsPage() {
         <div className="w-1/2 flex flex-col h-full">
           <div className="flex items-center gap-4 p-2 border-b bg-white/75 backdrop-blur sticky top-0">
             <CategorySelect value={cat} onChange={setCat} />
+            <DateRangeFilter
+              start={start}
+              end={end}
+              onChangeStart={setStart}
+              onChangeEnd={setEnd}
+            />
             <ReloadButton />
           </div>
           <div className="flex-1">

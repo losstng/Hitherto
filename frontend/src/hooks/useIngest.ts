@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { api } from "@/lib/api";
 import { ApiResponse, NewsletterLite } from "@/lib/types";
 
@@ -13,30 +14,46 @@ export const useReload = () => {
       return data.data!;
     },
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["category"] });
+      client.invalidateQueries({ queryKey: ["newsletters"] });
     },
   });
 };
 
-export const useCategory = (category: string) =>
+export const useNewsletters = () =>
   useQuery({
-    queryKey: ["category", category],
+    queryKey: ["newsletters"],
     queryFn: async () => {
-      if (!category) {
-        const { data } = await api.post<ApiResponse<NewsletterLite[]>>(
-          "/ingest/bloomberg_reload"
-        );
-        if (!data.success) throw new Error(data.error);
-        return data.data!;
-      }
-      const { data } = await api.get<ApiResponse<NewsletterLite[]>>(
-        "/ingest/category_filter",
-        { params: { category } }
+      const { data } = await api.post<ApiResponse<NewsletterLite[]>>(
+        "/ingest/bloomberg_reload"
       );
       if (!data.success) throw new Error(data.error);
       return data.data!;
     },
   });
+
+export const useFilters = (category: string, start: string, end: string) => {
+  const { data, isFetching } = useNewsletters();
+  const filtered = useMemo(() => {
+    if (!data) return [] as NewsletterLite[];
+    return data.filter((n) => {
+      if (category) {
+        const normalized = category.toLowerCase().replace(/ /g, "_");
+        if (n.category !== normalized) return false;
+      }
+      if (start) {
+        const sd = new Date(start);
+        if (new Date(n.received_at) < sd) return false;
+      }
+      if (end) {
+        const ed = new Date(end);
+        ed.setDate(ed.getDate() + 1);
+        if (new Date(n.received_at) >= ed) return false;
+      }
+      return true;
+    });
+  }, [data, category, start, end]);
+  return { data: filtered, isFetching } as const;
+};
 
 export const useCategories = () =>
   useQuery({
