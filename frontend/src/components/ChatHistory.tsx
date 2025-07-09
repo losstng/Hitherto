@@ -21,8 +21,14 @@ export default function ChatHistory({ messages, loading }: { messages: ChatMessa
     <div className="max-h-[60vh] overflow-y-auto p-4 space-y-3">
       {messages.map((m) => (
         <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-          <div className={`max-w-lg rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-gray-100 text-black" : "bg-indigo-50 text-gray-900"}`}> 
+          <div className={`max-w-lg rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-gray-100 text-black" : "bg-indigo-50 text-gray-900"}`}>
             <p>{m.text}</p>
+            <button
+              onClick={() => navigator.clipboard.writeText(m.text)}
+              className="mt-1 text-xs text-blue-500 hover:underline"
+            >
+              Copy
+            </button>
             {(m.timestamp || m.source) && (
               <div className="mt-1 text-xs text-gray-500 flex justify-between">
                 {m.timestamp && <span>{m.timestamp}</span>}
