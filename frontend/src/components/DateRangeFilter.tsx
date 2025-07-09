@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
-import "react-day-picker/dist/style.css";
+import "@/styles/daypicker.css";
 
 export default function DateRangeFilter({
   start,
