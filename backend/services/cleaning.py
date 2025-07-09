@@ -5,6 +5,9 @@ def clean_bloomberg_newsletter(text: str) -> str:
     # Nuke anything in angle brackets
     text = re.sub(r'<[^>]+>', '', text)
 
+    # Drop standalone "Quoted" lines often added by Gmail
+    text = re.sub(r'^Quoted\n?', '', text, flags=re.MULTILINE)
+
     # Define cut-off markers – all case-insensitive
     footer_markers = [
         "Got a tip or want to send in questions?",
@@ -23,5 +26,4 @@ def clean_bloomberg_newsletter(text: str) -> str:
         if match:
             text = text[:match.start()]
             break
-
     return text.strip()
