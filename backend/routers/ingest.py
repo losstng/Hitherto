@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 import logging
 import json
+from datetime import datetime, timedelta
 from ..database import get_db
 from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
@@ -123,6 +124,44 @@ def get_categories(db: Session = Depends(get_db)):
         return ApiResponse(success=True, data=names)
     except Exception as e:
         logger.exception("Failed to fetch categories")
+        return ApiResponse(success=False, error=str(e))
+
+
+@router.get("/filter", response_model=ApiResponse)
+def filter_newsletters(
+    category: str | None = Query(None),
+    date: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Filter newsletters by optional category and received date (YYYY-MM-DD)."""
+    logger.info(f"Filtering newsletters category={category} date={date}")
+    try:
+        q = db.query(Newsletter)
+        if category:
+            normalized = category.lower().replace(" ", "_")
+            q = q.filter(Newsletter.category == normalized)
+        if date:
+            try:
+                dt = datetime.fromisoformat(date)
+            except ValueError:
+                return ApiResponse(success=False, error="Invalid date format. Use YYYY-MM-DD")
+            start = datetime.combine(dt.date(), datetime.min.time())
+            end = start + timedelta(days=1)
+            q = q.filter(Newsletter.received_at >= start, Newsletter.received_at < end)
+        results = q.order_by(Newsletter.received_at.desc()).all()
+        payload = [
+            {
+                "title": n.title,
+                "message_id": n.message_id,
+                "received_at": n.received_at,
+                "category": n.category,
+            }
+            for n in results
+        ]
+        logger.info(f"Returning {len(payload)} filtered newsletters")
+        return ApiResponse(success=True, data=payload)
+    except Exception as e:
+        logger.exception("Failed to filter newsletters")
         return ApiResponse(success=False, error=str(e))
 
 

@@ -13,16 +13,16 @@ export const useReload = () => {
       return data.data!;
     },
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["category"] });
+      client.invalidateQueries({ queryKey: ["filter"] });
     },
   });
 };
 
-export const useCategory = (category: string) =>
+export const useFilters = (category: string, date: string) =>
   useQuery({
-    queryKey: ["category", category],
+    queryKey: ["filter", category, date],
     queryFn: async () => {
-      if (!category) {
+      if (!category && !date) {
         const { data } = await api.post<ApiResponse<NewsletterLite[]>>(
           "/ingest/bloomberg_reload"
         );
@@ -30,8 +30,8 @@ export const useCategory = (category: string) =>
         return data.data!;
       }
       const { data } = await api.get<ApiResponse<NewsletterLite[]>>(
-        "/ingest/category_filter",
-        { params: { category } }
+        "/ingest/filter",
+        { params: { category: category || undefined, date: date || undefined } }
       );
       if (!data.success) throw new Error(data.error);
       return data.data!;
