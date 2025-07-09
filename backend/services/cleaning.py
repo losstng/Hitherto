@@ -6,6 +6,12 @@ def clean_bloomberg_newsletter(text: str) -> str:
     # Remove all URLs within angle brackets
     text = re.sub(r'<https?://[^>]+>', '', text)
 
+    # Remove Bloomberg tracking links that occasionally contain garbled characters
+    text = re.sub(r'<https://sli\.bloomberg\.com/click[^>]*>', '', text)
+
+    # Drop stray lines that just say "Quoted"
+    text = re.sub(r'^Quoted\s*\n?', '', text, flags=re.MULTILINE)
+
     # Remove inline annotations like [1] <> or [4] <>
     text = re.sub(r'\[\d+\]\s*<>', '', text)
 
