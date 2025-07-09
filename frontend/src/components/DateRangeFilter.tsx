@@ -43,6 +43,19 @@ export default function DateRangeFilter({
               onChangeEnd(range.to?.toISOString().slice(0, 10) ?? "");
             }}
           />
+          <div className="text-right mt-2">
+            <button
+              type="button"
+              className="text-sm text-blue-600 underline"
+              onClick={() => {
+                onChangeStart("");
+                onChangeEnd("");
+                setOpen(false);
+              }}
+            >
+              Reset
+            </button>
+          </div>
         </div>
       )}
     </div>
