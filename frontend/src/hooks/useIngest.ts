@@ -18,11 +18,11 @@ export const useReload = () => {
   });
 };
 
-export const useFilters = (category: string, date: string) =>
+export const useFilters = (category: string, start: string, end: string) =>
   useQuery({
-    queryKey: ["filter", category, date],
+    queryKey: ["filter", category, start, end],
     queryFn: async () => {
-      if (!category && !date) {
+      if (!category && !start && !end) {
         const { data } = await api.post<ApiResponse<NewsletterLite[]>>(
           "/ingest/bloomberg_reload"
         );
@@ -31,7 +31,13 @@ export const useFilters = (category: string, date: string) =>
       }
       const { data } = await api.get<ApiResponse<NewsletterLite[]>>(
         "/ingest/filter",
-        { params: { category: category || undefined, date: date || undefined } }
+        {
+          params: {
+            category: category || undefined,
+            start_date: start || undefined,
+            end_date: end || undefined,
+          },
+        }
       );
       if (!data.success) throw new Error(data.error);
       return data.data!;

@@ -130,24 +130,33 @@ def get_categories(db: Session = Depends(get_db)):
 @router.get("/filter", response_model=ApiResponse)
 def filter_newsletters(
     category: str | None = Query(None),
-    date: str | None = Query(None),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    """Filter newsletters by optional category and received date (YYYY-MM-DD)."""
-    logger.info(f"Filtering newsletters category={category} date={date}")
+    """Filter newsletters by optional category and received date range (YYYY-MM-DD)."""
+    logger.info(
+        f"Filtering newsletters category={category} start_date={start_date} end_date={end_date}"
+    )
     try:
         q = db.query(Newsletter)
         if category:
             normalized = category.lower().replace(" ", "_")
             q = q.filter(Newsletter.category == normalized)
-        if date:
+        if start_date:
             try:
-                dt = datetime.fromisoformat(date)
+                start_dt = datetime.fromisoformat(start_date)
             except ValueError:
-                return ApiResponse(success=False, error="Invalid date format. Use YYYY-MM-DD")
-            start = datetime.combine(dt.date(), datetime.min.time())
-            end = start + timedelta(days=1)
-            q = q.filter(Newsletter.received_at >= start, Newsletter.received_at < end)
+                return ApiResponse(success=False, error="Invalid start_date format. Use YYYY-MM-DD")
+            start = datetime.combine(start_dt.date(), datetime.min.time())
+            q = q.filter(Newsletter.received_at >= start)
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+            except ValueError:
+                return ApiResponse(success=False, error="Invalid end_date format. Use YYYY-MM-DD")
+            end = datetime.combine(end_dt.date(), datetime.min.time()) + timedelta(days=1)
+            q = q.filter(Newsletter.received_at < end)
         results = q.order_by(Newsletter.received_at.desc()).all()
         payload = [
             {
