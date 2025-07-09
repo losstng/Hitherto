@@ -79,4 +79,5 @@ def retrieve_context(
         return context_docs
 
     except Exception as e:
-        logging.exception(f"Failed to retrieve context for query: {query}")        return []
+        logging.exception(f"Failed to retrieve context for query: {query}")        
+        return []
