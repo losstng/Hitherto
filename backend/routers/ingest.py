@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from ..database import get_db
 from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
@@ -25,6 +25,7 @@ from pathlib import Path
 router = APIRouter(tags=["Ingestion"])
 logger = logging.getLogger(__name__)
 
+
 # ----- Status ------------------------------------------------------------
 @router.get("/gmail_status", response_model=ApiResponse)
 def gmail_status():
@@ -33,6 +34,7 @@ def gmail_status():
     connected = main.gmail_service is not None
     logger.debug(f"Gmail connected: {connected}")
     return ApiResponse(success=True, data={"connected": connected})
+
 
 # retrieve
 @router.post("/bloomberg_reload", response_model=ApiResponse)
@@ -47,11 +49,7 @@ async def reload_bloomberg_emails(db: Session = Depends(get_db)):
         stored = scan_bloomberg_emails(service=main.gmail_service, db=db)
         logger.debug(f"scan_bloomberg_emails stored {len(stored)} new entries")
 
-        newsletters = (
-            db.query(Newsletter)
-            .order_by(Newsletter.received_at.desc())
-            .all()
-        )
+        newsletters = db.query(Newsletter).order_by(Newsletter.received_at.desc()).all()
         logger.debug(f"Retrieved {len(newsletters)} newsletters from DB")
 
         payload = [
@@ -72,10 +70,12 @@ async def reload_bloomberg_emails(db: Session = Depends(get_db)):
     except Exception as e:
         logger.exception("Error in bloomberg_reload endpoint")
         return ApiResponse(success=False, error=str(e))
-        
+
 
 @router.get("/category_filter", response_model=ApiResponse)
-def get_newsletters_by_category(category: str = Query(...), db: Session = Depends(get_db)):
+def get_newsletters_by_category(
+    category: str = Query(...), db: Session = Depends(get_db)
+):
     logger.info(f"Filtering newsletters by category: {category}")
 
     def filter_newsletters_by_category(db: Session, category: str):
@@ -147,22 +147,30 @@ def filter_newsletters(
             try:
                 start_dt = datetime.fromisoformat(start_date)
             except ValueError:
-                return ApiResponse(success=False, error="Invalid start_date format. Use YYYY-MM-DD")
-            start = datetime.combine(start_dt.date(), datetime.min.time())
+                return ApiResponse(
+                    success=False, error="Invalid start_date format. Use YYYY-MM-DD"
+                )
+            start = datetime.combine(start_dt.date(), datetime.min.time()).replace(
+                tzinfo=timezone.utc
+            )
             q = q.filter(Newsletter.received_at >= start)
         if end_date:
             try:
                 end_dt = datetime.fromisoformat(end_date)
             except ValueError:
-                return ApiResponse(success=False, error="Invalid end_date format. Use YYYY-MM-DD")
-            end = datetime.combine(end_dt.date(), datetime.min.time()) + timedelta(days=1)
+                return ApiResponse(
+                    success=False, error="Invalid end_date format. Use YYYY-MM-DD"
+                )
+            end = datetime.combine(end_dt.date(), datetime.min.time()).replace(
+                tzinfo=timezone.utc
+            ) + timedelta(days=1)
             q = q.filter(Newsletter.received_at < end)
         results = q.order_by(Newsletter.received_at.desc()).all()
         payload = [
             {
                 "title": n.title,
                 "message_id": n.message_id,
-                "received_at": n.received_at,
+                "received_at": n.received_at.isoformat() if n.received_at else None,
                 "category": n.category,
             }
             for n in results
@@ -206,15 +214,19 @@ def extract_bloomberg_content(message_id: str, db: Session = Depends(get_db)):
         logger.exception("Error extracting newsletter text")
         return ApiResponse(success=False, error=str(e))
 
+
 @router.post("/chunk/{message_id}", response_model=ApiResponse)
 def chunk_newsletter(message_id: str, db: Session = Depends(get_db)):
     logger.info(f"Chunking newsletter {message_id}")
     newsletter = chunk_newsletter_text(db, message_id)
     if newsletter:
         logger.info(f"Chunking succeeded for {message_id}")
-        return ApiResponse(success=True, data={"message_id": message_id, "has_chunks": True})
+        return ApiResponse(
+            success=True, data={"message_id": message_id, "has_chunks": True}
+        )
     logger.error(f"Chunking failed for {message_id}")
     return ApiResponse(success=False, error="Chunking failed or prerequisites missing.")
+
 
 # process
 @router.post("/embed/{message_id}", response_model=ApiResponse)
@@ -229,25 +241,32 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
 
         if not newsletter.chunked_text:
             logger.error(f"Chunked text missing for {message_id}")
-            return ApiResponse(success=False, error="Chunked text missing. Run /chunk first.")
+            return ApiResponse(
+                success=False, error="Chunked text missing. Run /chunk first."
+            )
 
         # Primitive “already-embedded” check: does dir exist?
-        cat   = (newsletter.category or "uncategorized").lower().replace(" ", "_")
+        cat = (newsletter.category or "uncategorized").lower().replace(" ", "_")
         vec_dir = Path("db/faiss_store") / cat
         if (vec_dir / "index.faiss").exists():
             logger.info(f"Newsletter {message_id} already embedded")
-            return ApiResponse(success=True, data={"message_id": message_id, "already_embedded": True})
+            return ApiResponse(
+                success=True, data={"message_id": message_id, "already_embedded": True}
+            )
 
         db_obj = embed_chunked_newsletter(db, message_id)
         if not db_obj:
             logger.error(f"Embedding failed for {message_id}")
             return ApiResponse(success=False, error="Embedding failed.")
         logger.info(f"Embedding completed for {message_id}")
-        return ApiResponse(success=True, data={"message_id": message_id, "embedded": True})
+        return ApiResponse(
+            success=True, data={"message_id": message_id, "embedded": True}
+        )
 
     except Exception as e:
         logger.exception("Error embedding newsletter")
         return ApiResponse(success=False, error=str(e))
+
 
 # ----- Review ------------------------------------------------------------
 @router.get("/raw_text/{message_id}", response_model=ApiResponse)
@@ -269,6 +288,7 @@ def get_raw_text(message_id: str, db: Session = Depends(get_db)):
     logger.debug(f"Returning {len(newsletter.chunked_text)} chunks")
     return ApiResponse(success=True, data={"chunks": newsletter.chunked_text})
 
+
 @router.get("/chunked_text/{message_id}", response_model=ApiResponse)
 def get_chunked_text(message_id: str, db: Session = Depends(get_db)):
     """Return stored chunked text for a newsletter."""
@@ -280,6 +300,7 @@ def get_chunked_text(message_id: str, db: Session = Depends(get_db)):
     logger.debug(f"Returning {len(n.chunked_text)} chunks")
     return ApiResponse(success=True, data={"chunks": n.chunked_text})
 
+
 # review
 @router.post("/tokenize/{message_id}", response_model=ApiResponse)
 def tokenize_newsletter(message_id: str, db: Session = Depends(get_db)):
@@ -290,4 +311,6 @@ def tokenize_newsletter(message_id: str, db: Session = Depends(get_db)):
         logger.error(f"Tokenization failed for {message_id}")
         return ApiResponse(success=False, error="Tokenization failed")
     logger.debug(f"Token count for {message_id}: {count}")
-    return ApiResponse(success=True, data={"message_id": message_id, "token_count": count})
+    return ApiResponse(
+        success=True, data={"message_id": message_id, "token_count": count}
+    )
