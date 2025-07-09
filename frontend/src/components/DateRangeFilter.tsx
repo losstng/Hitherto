@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
+import { format, parseISO } from "date-fns";
 import "@/styles/daypicker.css";
 
 export default function DateRangeFilter({
@@ -15,8 +16,9 @@ export default function DateRangeFilter({
   onChangeEnd: (d: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const selected: DateRange | undefined =
-    start ? { from: new Date(start), to: end ? new Date(end) : undefined } : undefined;
+  const selected: DateRange | undefined = start
+    ? { from: parseISO(start), to: end ? parseISO(end) : undefined }
+    : undefined;
   return (
     <div className="relative">
       <button
@@ -39,8 +41,8 @@ export default function DateRangeFilter({
                 onChangeEnd("");
                 return;
               }
-              onChangeStart(range.from?.toISOString().slice(0, 10) ?? "");
-              onChangeEnd(range.to?.toISOString().slice(0, 10) ?? "");
+              onChangeStart(range.from ? format(range.from, "yyyy-MM-dd") : "");
+              onChangeEnd(range.to ? format(range.to, "yyyy-MM-dd") : "");
             }}
           />
           <div className="text-right mt-2">
