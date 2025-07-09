@@ -44,7 +44,8 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         <button
           onClick={async () => {
             const { data } = await api.get(`/ingest/raw_text/${n.message_id}`);
-            const text = data.data?.text ?? "";
+            const chunks: string[] = data.data?.chunks ?? [];
+            const text = chunks.join("\n\n");
             setRaw(text);
             if (data.success) {
               pushMessage({

@@ -204,15 +204,22 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
 # ----- Review ------------------------------------------------------------
 @router.get("/raw_text/{message_id}", response_model=ApiResponse)
 def get_raw_text(message_id: str, db: Session = Depends(get_db)):
-    """Return previously extracted plain text for a newsletter."""
+    """Return cleaned and chunked text for a newsletter."""
     logger.info(f"Fetching raw text for {message_id}")
-    n = db.query(Newsletter).filter_by(message_id=message_id).first()
-    if not n or not n.extracted_text:
+    newsletter = db.query(Newsletter).filter_by(message_id=message_id).first()
+    if not newsletter or not newsletter.extracted_text:
         logger.warning(f"No text available for {message_id}")
         return ApiResponse(success=False, error="Text not available")
-    cleaned = clean_bloomberg_newsletter(n.extracted_text)
-    logger.debug(f"Returning {len(cleaned)} characters of text")
-    return ApiResponse(success=True, data={"text": cleaned})
+
+    if not newsletter.chunked_text:
+        logger.debug("Chunked text missing; generating now")
+        newsletter = chunk_newsletter_text(db, message_id)
+        if not newsletter:
+            logger.error(f"Chunking failed for {message_id}")
+            return ApiResponse(success=False, error="Chunking failed")
+
+    logger.debug(f"Returning {len(newsletter.chunked_text)} chunks")
+    return ApiResponse(success=True, data={"chunks": newsletter.chunked_text})
 
 @router.get("/chunked_text/{message_id}", response_model=ApiResponse)
 def get_chunked_text(message_id: str, db: Session = Depends(get_db)):
