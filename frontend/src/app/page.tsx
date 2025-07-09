@@ -13,10 +13,10 @@ export default function EmailsPage() {
 
   return (
     <div className="flex w-full h-screen overflow-hidden">
-      <div className="w-1/5">
+      <div className="w-[15%]">
         <Sidebar />
       </div>
-      <div className="flex w-4/5 h-full">
+      <div className="flex flex-1 h-full">
         <div className="w-1/2 space-y-4 p-4 overflow-y-auto h-full">
           {isFetching && <p>Loading emails…</p>}
           {data && <NewsletterTable data={data} />}
