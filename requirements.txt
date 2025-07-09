@@ -19,3 +19,4 @@ numpy
 psycopg2
 bs4
 langchain-community
+yfinance

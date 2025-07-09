@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import StockPrices from "./StockPrices";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -25,6 +26,7 @@ export default function Sidebar() {
   return (
     <aside className="flex flex-col h-full w-full bg-gray-100 shadow">
       <Status />
+      <StockPrices />
       <nav className="p-4 space-y-2">
         <Link
           href="/"
