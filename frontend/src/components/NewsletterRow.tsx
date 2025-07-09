@@ -13,8 +13,18 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
   const { setContext, pushMessage } = useChatContext();
   const [category, setCategory] = useState(n.category ?? "");
 
+  const ensureExtracted = async () => {
+    try {
+      await extract.mutateAsync(undefined, {
+        onSuccess: (data) => setCategory(data.category),
+      });
+    } catch (_) {
+      // ignore errors - backend handles idempotency
+    }
+  };
+
   return (
-    <> 
+    <>
     <tr className="border-b">
       <td className="p-2">{n.title}</td>
       <td className="p-2">{category}</td>
@@ -32,16 +42,17 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         </button>
         <button
           onClick={async () => {
+            await ensureExtracted();
             await chunk.mutateAsync();
             await embed.mutateAsync();
           }}
-          disabled={!extract.isSuccess}
           className="btn"
         >
           Vector
         </button>
         <button
           onClick={async () => {
+            await ensureExtracted();
             const { data } = await api.get(`/ingest/raw_text/${n.message_id}`);
             const chunks: string[] = data.data?.chunks ?? [];
             const text = chunks.join("\n\n");
@@ -54,17 +65,17 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
               });
             }
           }}
-          disabled={!extract.isSuccess}
           className="btn"
         >
           Raw Text
         </button>
         <button
           onClick={async () => {
+            await ensureExtracted();
+            await chunk.mutateAsync();
             const { data } = await api.get(`/ingest/chunked_text/${n.message_id}`);
             if (data.success) setContext({ messageId: n.message_id, chunks: data.data.chunks });
           }}
-          disabled={!embed.isSuccess}
           className="btn"
         >
           Select
