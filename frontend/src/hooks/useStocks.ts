@@ -18,5 +18,6 @@ export const useStockQuotes = (tickers: string[]) =>
       });
       return data.data as StockQuote[];
     },
+    refetchInterval: 5000,
   });
 
