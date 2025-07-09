@@ -6,7 +6,16 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-DEFAULT_TICKERS = ["TSLA", "GLOB", "MRVL", "NVDA", "INOD", "PLTR", "DAVE"]
+DEFAULT_TICKERS = [
+    "TSLA",
+    "GLOB",
+    "MRVL",
+    "NVDA",
+    "INOD",
+    "PLTR",
+    "DAVE",
+    "HAG.DE",
+]
 
 @router.get("/quotes", response_model=ApiResponse)
 def get_stock_quotes(tickers: str | None = Query(None)):

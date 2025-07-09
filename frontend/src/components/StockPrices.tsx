@@ -1,7 +1,16 @@
 "use client";
 import { useStockQuotes } from "@/hooks/useStocks";
 
-const DEFAULT_TICKERS = ["TSLA", "GLOB", "MRVL", "NVDA", "INOD", "PLTR", "DAVE"];
+const DEFAULT_TICKERS = [
+  "TSLA",
+  "GLOB",
+  "MRVL",
+  "NVDA",
+  "INOD",
+  "PLTR",
+  "DAVE",
+  "HAG.DE",
+];
 
 export default function StockPrices() {
   const { data, isLoading } = useStockQuotes(DEFAULT_TICKERS);

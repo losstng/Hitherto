@@ -1,5 +1,5 @@
 import pytest
-from backend.routers.stocks import get_stock_quotes
+from backend.routers.stocks import get_stock_quotes, DEFAULT_TICKERS
 import yfinance as yf
 
 class DummyTicker:
@@ -17,4 +17,8 @@ def test_get_stock_quotes(monkeypatch):
     assert resp.data[0]["symbol"] == "TEST"
     assert resp.data[0]["price"] == 10.0
     assert abs(resp.data[0]["change_percent"] - 25.0) < 1e-6
+
+
+def test_default_tickers_contains_hag():
+    assert "HAG.DE" in DEFAULT_TICKERS
 
