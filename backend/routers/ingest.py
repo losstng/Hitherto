@@ -107,6 +107,50 @@ def get_newsletters_by_category(category: str = Query(...), db: Session = Depend
         return ApiResponse(success=False, error=str(e))
 
 
+@router.get("/filter", response_model=ApiResponse)
+def filter_newsletters(
+    category: str | None = Query(None),
+    date: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Filter newsletters by optional category and date (YYYY-MM-DD)."""
+    logger.info(f"Filtering newsletters by category='{category}' date='{date}'")
+
+    query = db.query(Newsletter)
+
+    if category:
+        normalized = category.lower().replace(" ", "_")
+        query = query.filter(Newsletter.category == normalized)
+
+    if date:
+        try:
+            from datetime import datetime, time
+
+            day = datetime.fromisoformat(date)
+            start = datetime.combine(day.date(), time.min)
+            end = datetime.combine(day.date(), time.max)
+        except ValueError:
+            logger.error("Invalid date format: %s", date)
+            return ApiResponse(success=False, error="Invalid date format. Use YYYY-MM-DD")
+
+        query = query.filter(Newsletter.received_at >= start, Newsletter.received_at <= end)
+
+    results = query.order_by(Newsletter.received_at.desc()).all()
+
+    filtered = [
+        {
+            "title": n.title,
+            "message_id": n.message_id,
+            "received_at": n.received_at,
+            "category": n.category,
+        }
+        for n in results
+    ]
+
+    logger.info("Returning %d filtered newsletters", len(filtered))
+    return ApiResponse(success=True, data=filtered)
+
+
 @router.get("/categories", response_model=ApiResponse)
 def get_categories(db: Session = Depends(get_db)):
     """Return a list of distinct newsletter categories."""
