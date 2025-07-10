@@ -23,7 +23,8 @@ export default function ChatPanel() {
   const ask = useMutation({
     mutationFn: async ({ text, mode }: { text: string; mode: string }) => {
       const payload: AskPayload = { query: text, mode };
-      if (context) payload.chunks = context.chunks;
+      if (context.length > 0)
+        payload.chunks = context.flatMap((c) => c.chunks);
       const { data } = await api.post("/ask", payload);
       return data as { success: boolean; data: AskResp };
     },
@@ -52,8 +53,10 @@ export default function ChatPanel() {
 
   return (
     <div className="flex flex-col h-full w-full bg-white border-l shadow-lg overflow-hidden">
-      {context && (
-        <div className="px-3 py-2 text-xs border-b bg-gray-50">Context: {context.messageId}</div>
+      {context.length > 0 && (
+        <div className="px-3 py-2 text-xs border-b bg-gray-50">
+          Context: {context.map((c) => c.title).join(", ")}
+        </div>
       )}
       <ChatHistory messages={messages} loading={ask.isPending} />
       <MessageInput onSend={handleSend} />
