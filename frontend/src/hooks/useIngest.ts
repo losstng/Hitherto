@@ -64,3 +64,35 @@ export const useCategories = () =>
       return data.data!;
     },
   });
+
+export const useExtractAll = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<ApiResponse<{ count: number }>>(
+        "/ingest/extract_all"
+      );
+      if (!data.success) throw new Error(data.error);
+      return data.data!;
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["newsletters"] });
+    },
+  });
+};
+
+export const useVectorizeAll = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<ApiResponse<{ count: number }>>(
+        "/ingest/vectorize_all"
+      );
+      if (!data.success) throw new Error(data.error);
+      return data.data!;
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["newsletters"] });
+    },
+  });
+};

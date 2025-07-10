@@ -250,7 +250,11 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
             logger.info(f"Newsletter {message_id} already vectorized in DB")
             return ApiResponse(
                 success=True,
-                data={"message_id": message_id, "already_embedded": True, "vectorized": True},
+                data={
+                    "message_id": message_id,
+                    "already_embedded": True,
+                    "vectorized": True,
+                },
             )
 
         db_obj = embed_chunked_newsletter(db, message_id)
@@ -314,3 +318,58 @@ def tokenize_newsletter(message_id: str, db: Session = Depends(get_db)):
     return ApiResponse(
         success=True, data={"message_id": message_id, "token_count": count}
     )
+
+
+@router.post("/extract_all", response_model=ApiResponse)
+def extract_all_newsletters(db: Session = Depends(get_db)):
+    """Extract text for all newsletters that lack it."""
+    logger.info("Extracting text for all newsletters")
+    if main.gmail_service is None:
+        logger.error("Gmail service is not initialized")
+        return ApiResponse(success=False, error="Gmail service not initialized")
+    newsletters = db.query(Newsletter).filter(Newsletter.extracted_text.is_(None)).all()
+    processed = []
+    for n in newsletters:
+        try:
+            updated = extract_bloomberg_email_text(
+                service=main.gmail_service,
+                db=db,
+                message_id=n.message_id,
+            )
+            if updated and updated.extracted_text:
+                processed.append(n.message_id)
+        except Exception:
+            logger.exception("Failed to extract %s", n.message_id)
+            continue
+    logger.info("Extracted %d newsletters", len(processed))
+    return ApiResponse(success=True, data={"count": len(processed), "ids": processed})
+
+
+@router.post("/vectorize_all", response_model=ApiResponse)
+def vectorize_all_newsletters(db: Session = Depends(get_db)):
+    """Chunk and embed all newsletters that are not yet vectorized."""
+    logger.info("Vectorizing all newsletters")
+    newsletters = db.query(Newsletter).filter(Newsletter.vectorized.is_(False)).all()
+    processed = []
+    for n in newsletters:
+        try:
+            if not n.extracted_text:
+                if main.gmail_service is None:
+                    logger.error("Gmail service is not initialized")
+                    return ApiResponse(
+                        success=False, error="Gmail service not initialized"
+                    )
+                n = extract_bloomberg_email_text(main.gmail_service, db, n.message_id)
+                if not n or not n.extracted_text:
+                    continue
+            if not n.chunked_text:
+                n = chunk_newsletter_text(db, n.message_id)
+                if not n:
+                    continue
+            embed_chunked_newsletter(db, n.message_id)
+            processed.append(n.message_id)
+        except Exception:
+            logger.exception("Failed to vectorize %s", n.message_id)
+            continue
+    logger.info("Vectorized %d newsletters", len(processed))
+    return ApiResponse(success=True, data={"count": len(processed), "ids": processed})

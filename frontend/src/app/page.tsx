@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import ReloadButton from "@/components/ReloadButton";
+import ExtractAllButton from "@/components/ExtractAllButton";
+import VectorizeAllButton from "@/components/VectorizeAllButton";
 import CategorySelect from "@/components/CategorySelect";
 import DateRangeFilter from "@/components/DateRangeFilter";
 import NewsletterTable from "@/components/NewsletterTable";
@@ -34,6 +36,8 @@ export default function EmailsPage() {
               onChangeEnd={setEnd}
             />
             <ReloadButton />
+            <ExtractAllButton />
+            <VectorizeAllButton />
           </div>
           <div className="flex-1">
             <ChatPanel />
