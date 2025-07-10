@@ -16,7 +16,12 @@ def retrieve_context(
 ) -> list[Document]:
     """Retrieve relevant chunks filtered by category and optional date range."""
     try:
-        embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        device = os.environ.get("EMBEDDING_DEVICE", "cpu")
+        embedding_model = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            model_kwargs={"device": device},
+            encode_kwargs={"device": device},
+        )
 
         start_dt = datetime.fromisoformat(start_date).date() if start_date else None
         end_dt = datetime.fromisoformat(end_date).date() if end_date else None
