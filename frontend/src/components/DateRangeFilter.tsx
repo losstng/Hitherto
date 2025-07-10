@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { format, parseISO } from "date-fns";
+import { useChatContext } from "./ChatProvider";
 import "@/styles/daypicker.css";
 
 export default function DateRangeFilter({
@@ -16,6 +17,7 @@ export default function DateRangeFilter({
   onChangeEnd: (d: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { setFilters } = useChatContext();
   const selected: DateRange | undefined = start
     ? { from: parseISO(start), to: end ? parseISO(end) : undefined }
     : undefined;
@@ -39,10 +41,14 @@ export default function DateRangeFilter({
               if (!range) {
                 onChangeStart("");
                 onChangeEnd("");
+                setFilters({ start: "", end: "" });
                 return;
               }
-              onChangeStart(range.from ? format(range.from, "yyyy-MM-dd") : "");
-              onChangeEnd(range.to ? format(range.to, "yyyy-MM-dd") : "");
+              const from = range.from ? format(range.from, "yyyy-MM-dd") : "";
+              const to = range.to ? format(range.to, "yyyy-MM-dd") : "";
+              onChangeStart(from);
+              onChangeEnd(to);
+              setFilters({ start: from, end: to });
             }}
           />
           <div className="text-right mt-2">
@@ -52,6 +58,7 @@ export default function DateRangeFilter({
               onClick={() => {
                 onChangeStart("");
                 onChangeEnd("");
+                setFilters({ start: "", end: "" });
                 setOpen(false);
               }}
             >

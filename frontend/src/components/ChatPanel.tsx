@@ -12,7 +12,7 @@ interface AskResp {
 }
 
 export default function ChatPanel() {
-  const { context, messages, pushMessage } = useChatContext();
+  const { context, filters, messages, pushMessage } = useChatContext();
 
   interface AskPayload {
     query: string;
@@ -23,8 +23,43 @@ export default function ChatPanel() {
   const ask = useMutation({
     mutationFn: async ({ text, mode }: { text: string; mode: string }) => {
       const payload: AskPayload = { query: text, mode };
-      if (context.length > 0)
-        payload.chunks = context.flatMap((c) => c.chunks);
+      const oc = context.filter((c) => c.oc);
+      const sel = context.filter((c) => !c.oc);
+
+      let chunks: string[] = [];
+
+      if (filters.category || filters.start || filters.end) {
+        if (oc.length > 0 && sel.length > 0) {
+          chunks = context.flatMap((c) => c.chunks);
+        } else if (oc.length > 0 && sel.length === 0) {
+          chunks = oc.flatMap((c) => c.chunks);
+          const { data } = await api.post("/context", {
+            query: text,
+            categories: filters.category ? [filters.category] : [],
+            start_date: filters.start || null,
+            end_date: filters.end || null,
+            k: 5,
+          });
+          if (data.success)
+            chunks = [...chunks, ...data.data.map((d: any) => d.page_content)];
+        } else if (sel.length === 0) {
+          const { data } = await api.post("/context", {
+            query: text,
+            categories: filters.category ? [filters.category] : [],
+            start_date: filters.start || null,
+            end_date: filters.end || null,
+            k: 5,
+          });
+          if (data.success) chunks = data.data.map((d: any) => d.page_content);
+        } else {
+          chunks = sel.flatMap((c) => c.chunks);
+        }
+      } else if (context.length > 0) {
+        chunks = context.flatMap((c) => c.chunks);
+      }
+
+      if (chunks.length > 0) payload.chunks = chunks;
+
       const { data } = await api.post("/ask", payload);
       return data as { success: boolean; data: AskResp };
     },
@@ -55,7 +90,7 @@ export default function ChatPanel() {
     <div className="flex flex-col h-full w-full bg-white border-l shadow-lg overflow-hidden">
       {context.length > 0 && (
         <div className="px-3 py-2 text-xs border-b bg-gray-50">
-          Context: {context.map((c) => c.title).join(", ")}
+          Context: {context.map((c) => `${c.title}${c.oc ? " (OC)" : ""}`).join(", ")}
         </div>
       )}
       <ChatHistory messages={messages} loading={ask.isPending} />

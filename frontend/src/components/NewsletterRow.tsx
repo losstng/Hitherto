@@ -85,14 +85,14 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
           onClick={async () => {
             const selected = context.some((c) => c.messageId === n.message_id);
             if (selected) {
-              toggleContext({ messageId: n.message_id, title: n.title, chunks: [] });
+              toggleContext({ messageId: n.message_id, title: n.title, chunks: [], category: n.category, receivedAt: n.received_at });
               return;
             }
             await ensureExtracted();
             await chunk.mutateAsync();
             const { data } = await api.get(`/ingest/chunked_text/${n.message_id}`);
             if (data.success)
-              toggleContext({ messageId: n.message_id, title: n.title, chunks: data.data.chunks });
+              toggleContext({ messageId: n.message_id, title: n.title, chunks: data.data.chunks, category: n.category, receivedAt: n.received_at });
           }}
           className="btn"
         >
