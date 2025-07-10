@@ -19,7 +19,9 @@ DEFAULT_TICKERS = [
 
 @router.get("/quotes", response_model=ApiResponse)
 def get_stock_quotes(tickers: str | None = Query(None)):
+    logger.info("Fetching stock quotes")
     symbols = tickers.split(",") if tickers else DEFAULT_TICKERS
+    logger.debug("Symbols requested: %s", symbols)
     quotes = []
     for sym in symbols:
         try:
@@ -48,5 +50,6 @@ def get_stock_quotes(tickers: str | None = Query(None)):
         except Exception as e:
             logger.exception("Failed to fetch quote for %s", sym)
             quotes.append({"symbol": sym, "error": str(e)})
+    logger.debug("Returning %d quotes", len(quotes))
     return ApiResponse(success=True, data=quotes)
 
