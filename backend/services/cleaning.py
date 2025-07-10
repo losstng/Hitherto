@@ -1,7 +1,11 @@
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 def clean_bloomberg_newsletter(text: str) -> str:
     """Remove angle-bracketed content and cut text at common Bloomberg footer lines."""
+    logger.debug("Cleaning newsletter text, input length=%d", len(text))
     # Nuke anything in angle brackets
     text = re.sub(r'<[^>]+>', '', text)
 
@@ -26,4 +30,6 @@ def clean_bloomberg_newsletter(text: str) -> str:
         if match:
             text = text[:match.start()]
             break
-    return text.strip()
+    cleaned = text.strip()
+    logger.debug("Cleaned newsletter text length=%d", len(cleaned))
+    return cleaned

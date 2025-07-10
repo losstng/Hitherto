@@ -23,6 +23,7 @@ def retrieve_context(
         end_dt = datetime.fromisoformat(end_date).date() if end_date else None
 
         def months_between(start: date, end: date):
+            logging.debug("Calculating months between %s and %s", start, end)
             m = date(start.year, start.month, 1)
             while m <= end:
                 yield m.strftime("%Y-%m")
@@ -38,7 +39,10 @@ def retrieve_context(
         elif end_dt:
             months = [end_dt.strftime("%Y-%m")]
 
+        logging.debug("Months filter: %s", months)
+
         for category in categories:
+            logging.debug("Loading vectors for category '%s'", category)
             safe_category = category.lower().replace(" ", "_")
             base_path = os.path.join(persist_base_dir, safe_category)
 

@@ -171,16 +171,21 @@ def fetch_raw_email(service, message_id: str):
 
 
 def find_text_plain_part(payload):
+    logging.debug("Searching for text/plain part")
     if payload.get("mimeType") == "text/plain" and "body" in payload and "data" in payload["body"]:
+        logging.debug("Found direct text/plain part")
         return payload
     for part in payload.get("parts", []):
         found = find_text_plain_part(part)
         if found:
+            logging.debug("Found nested text/plain part")
             return found
+    logging.debug("No text/plain part found")
     return None
 
 def find_largest_text_plain_part(payload):
     """Return the largest text/plain MIME part available."""
+    logging.debug("Locating largest text/plain MIME part")
     best_part = None
     best_size = -1
 
@@ -194,10 +199,13 @@ def find_largest_text_plain_part(payload):
             if size > best_size:
                 best_part = part
                 best_size = size
+                logging.debug("New best text/plain part size=%d", best_size)
         for child in part.get("parts", []):
             _walk(child)
 
     _walk(payload)
+    if best_part:
+        logging.debug("Largest text/plain part size=%d", best_size)
     return best_part
 
 
