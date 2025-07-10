@@ -12,7 +12,7 @@ interface AskResp {
 }
 
 export default function ChatPanel() {
-  const { context, filters, messages, pushMessage } = useChatContext();
+  const { context, filters, messages, pushMessage, clearContext } = useChatContext();
 
   interface AskPayload {
     query: string;
@@ -89,8 +89,13 @@ export default function ChatPanel() {
   return (
     <div className="flex flex-col h-full w-full bg-white border-l shadow-lg overflow-hidden">
       {context.length > 0 && (
-        <div className="px-3 py-2 text-xs border-b bg-gray-50">
-          Context: {context.map((c) => `${c.title}${c.oc ? " (OC)" : ""}`).join(", ")}
+        <div className="flex items-center px-3 py-2 text-xs border-b bg-gray-50">
+          <span className="flex-1">
+            Context: {context.map((c) => `${c.title}${c.oc ? " (OC)" : ""}`).join(", ")}
+          </span>
+          <button onClick={clearContext} className="text-blue-600 underline ml-2">
+            Clear
+          </button>
         </div>
       )}
       <ChatHistory messages={messages} loading={ask.isPending} />

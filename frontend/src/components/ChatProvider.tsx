@@ -20,6 +20,7 @@ interface Filters {
 interface State {
   context: ChatCtxItem[];
   toggleContext: (c: ChatCtxItem) => void;
+  clearContext: () => void;
   filters: Filters;
   setFilters: (f: Partial<Filters>) => void;
   messages: ChatMessage[];
@@ -59,6 +60,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
       const oc = computeOC(c, filters);
       return [...ctx, { ...c, oc }];
     });
+  const clearContext = () => setContext([]);
   const setFilters = (f: Partial<Filters>) =>
     setFiltersState((flts) => ({ ...flts, ...f }));
 
@@ -66,7 +68,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
     setContext((ctx) => ctx.map((i) => ({ ...i, oc: computeOC(i, filters) })));
   }, [filters]);
   return (
-    <Ctx.Provider value={{ context, toggleContext, filters, setFilters, messages, pushMessage }}>
+    <Ctx.Provider value={{ context, toggleContext, clearContext, filters, setFilters, messages, pushMessage }}>
       {children}
     </Ctx.Provider>
   );
