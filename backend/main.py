@@ -4,6 +4,7 @@ from .services.email_service import get_authenticated_gmail_service
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .database import engine
+from sqlalchemy import text
 from . import models
 from contextlib import asynccontextmanager
 from fastapi.routing import APIRoute
@@ -35,6 +36,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 models.Base.metadata.create_all(bind=engine)
+with engine.begin() as conn:
+    conn.execute(
+        text(
+            "ALTER TABLE newsletter ADD COLUMN IF NOT EXISTS vectorized BOOLEAN DEFAULT FALSE"
+        )
+    )
 
 app.add_middleware(
     CORSMiddleware,
