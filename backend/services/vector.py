@@ -70,6 +70,10 @@ def embed_chunked_newsletter(
             return None
         logging.info(f"Embedded newsletter {message_id} stored in category directory: {category_dir}")
 
+        newsletter.vectorized = True
+        db.commit()
+        db.refresh(newsletter)
+
         logging.info(
             f"Successfully embedded and stored newsletter {message_id} into {persist_dir}"
         )

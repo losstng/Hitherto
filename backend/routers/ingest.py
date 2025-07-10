@@ -61,6 +61,7 @@ async def reload_bloomberg_emails(db: Session = Depends(get_db)):
                 "received_at": n.received_at.isoformat() if n.received_at else None,
                 "has_text": n.extracted_text is not None,
                 "has_chunks": bool(n.chunked_text),
+                "vectorized": n.vectorized,
             }
             for n in newsletters
         ]
@@ -246,6 +247,13 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
                 success=False, error="Chunked text missing. Run /chunk first."
             )
 
+        if newsletter.vectorized:
+            logger.info(f"Newsletter {message_id} already vectorized in DB")
+            return ApiResponse(
+                success=True,
+                data={"message_id": message_id, "already_embedded": True, "vectorized": True},
+            )
+
         # Primitive “already-embedded” check: does dir exist?
         raw_cat = (newsletter.category or "uncategorized").lower().replace(" ", "_")
         cat = safe_filename(raw_cat)
@@ -253,7 +261,8 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
         if (vec_dir / "index.faiss").exists():
             logger.info(f"Newsletter {message_id} already embedded")
             return ApiResponse(
-                success=True, data={"message_id": message_id, "already_embedded": True}
+                success=True,
+                data={"message_id": message_id, "already_embedded": True, "vectorized": True},
             )
 
         db_obj = embed_chunked_newsletter(db, message_id)
@@ -262,7 +271,8 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
             return ApiResponse(success=False, error="Embedding failed.")
         logger.info(f"Embedding completed for {message_id}")
         return ApiResponse(
-            success=True, data={"message_id": message_id, "embedded": True}
+            success=True,
+            data={"message_id": message_id, "embedded": True, "vectorized": True},
         )
 
     except Exception as e:
