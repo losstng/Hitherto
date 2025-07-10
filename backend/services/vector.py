@@ -46,7 +46,12 @@ def embed_chunked_newsletter(
             )
 
         # Initialize embedding model
-        embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        device = os.environ.get("EMBEDDING_DEVICE", "cpu")
+        embedding_model = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            model_kwargs={"device": device},
+            encode_kwargs={"device": device},
+        )
 
         index_path = Path(persist_dir)
         if (index_path / "index.faiss").exists():
