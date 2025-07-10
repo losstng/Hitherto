@@ -45,7 +45,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
             })
           }
           className="btn"
-          disabled={hasText}
+          //disabled={hasText}
         >
           Extract {hasText && "✓"}
         </button>
@@ -58,7 +58,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
             });
           }}
           className="btn"
-          disabled={vectorized}
+          //disabled={vectorized}
         >
           Vector {vectorized && "✓"}
         </button>
