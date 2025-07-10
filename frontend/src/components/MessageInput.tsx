@@ -37,11 +37,13 @@ export default function MessageInput({ onSend }: Props) {
 
   return (
     <form onSubmit={submit} className="sticky bottom-0 p-3 bg-white border-t flex items-end gap-2">
-      <select value={mode} onChange={(e) => setMode(e.target.value)} className="border rounded px-1 text-sm">
-        <option value="extracted">extracted</option>
-        <option value="vector">vector</option>
-        <option value="rag">rag</option>
-        <option value="llm">llm</option>
+      <select
+        value={mode}
+        onChange={(e) => setMode(e.target.value)}
+        className="border rounded px-1 text-sm"
+      >
+        <option value="rag">RAG</option>
+        <option value="llm">LLM</option>
       </select>
       <textarea
         ref={textareaRef}
