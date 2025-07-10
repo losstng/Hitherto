@@ -10,6 +10,7 @@ from ..schemas import ApiResponse
 from ..services.chunking import chunk_newsletter_text
 from ..services.cleaning import clean_bloomberg_newsletter
 from ..services.vector import embed_chunked_newsletter
+from ..services.utils import safe_filename
 from ..services.token_counter import compute_token_count_simple
 from .. import main
 from ..models import Newsletter
@@ -246,7 +247,8 @@ def embed_newsletter(message_id: str, db: Session = Depends(get_db)):
             )
 
         # Primitive “already-embedded” check: does dir exist?
-        cat = (newsletter.category or "uncategorized").lower().replace(" ", "_")
+        raw_cat = (newsletter.category or "uncategorized").lower().replace(" ", "_")
+        cat = safe_filename(raw_cat)
         vec_dir = Path("db/faiss_store") / cat
         if (vec_dir / "index.faiss").exists():
             logger.info(f"Newsletter {message_id} already embedded")

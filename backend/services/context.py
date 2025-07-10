@@ -5,6 +5,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from datetime import datetime, date, timedelta
 import logging
 import os
+from .utils import safe_filename
 
 def retrieve_context(
     query: str,
@@ -43,7 +44,8 @@ def retrieve_context(
 
         for category in categories:
             logging.debug("Loading vectors for category '%s'", category)
-            safe_category = category.lower().replace(" ", "_")
+            normalized = category.lower().replace(" ", "_")
+            safe_category = safe_filename(normalized)
             base_path = os.path.join(persist_base_dir, safe_category)
 
             if months:
