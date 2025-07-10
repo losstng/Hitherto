@@ -1,5 +1,5 @@
 from langchain.schema import Document
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from sqlalchemy.orm import Session
 from ..models import Newsletter
@@ -7,7 +7,6 @@ from pathlib import Path
 from datetime import datetime
 import logging
 import os
-from .utils import safe_filename
 
 def embed_chunked_newsletter(
     db: Session, message_id: str, persist_dir: str = "db/faiss_store"
@@ -31,44 +30,41 @@ def embed_chunked_newsletter(
             return None
         # Prepare documents with metadata and unique ids
         documents = []
-        ids = []
         for idx, chunk in enumerate(newsletter.chunked_text):
-            doc_id = idx
-            ids.append(doc_id)
             documents.append(
                 Document(
                     page_content=chunk,
                     metadata={
-                        "id": f"{newsletter.message_id}-{idx}",
+                        "newsletter_id": newsletter.id,
                         "message_id": newsletter.message_id,
                         "category": newsletter.category,
                         "received_at": newsletter.received_at.isoformat() if newsletter.received_at else None,
                         "chunk_index": idx,
                     },
+                    id=f"{newsletter.id}-{idx}",
                 )
             )
 
         # Initialize embedding model
         embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-        # Embed and store using explicit ids so vectors can be referenced later
-        vector_db = FAISS.from_documents(documents, embedding_model, ids=ids)
+        index_path = Path(persist_dir)
+        if (index_path / "index.faiss").exists():
+            vector_db = FAISS.load_local(
+                persist_dir,
+                embedding_model,
+                allow_dangerous_deserialization=True,
+            )
+            vector_db.add_documents(documents)
+        else:
+            vector_db = FAISS.from_documents(documents, embedding_model)
 
-        # Dynamically assign persist_dir based on category and month for sharding
-        raw_category = (newsletter.category or "uncategorized").lower().replace(" ", "_")
-        category = safe_filename(raw_category)
-        month = (
-            newsletter.received_at.strftime("%Y-%m")
-            if isinstance(newsletter.received_at, datetime)
-            else "unknown"
-        )
-        category_dir = os.path.join(persist_dir, category, month)
-        Path(category_dir).mkdir(parents=True, exist_ok=True)
-        vector_db.save_local(category_dir)
-        if not os.path.exists(os.path.join(category_dir, "index.faiss")):
-            logging.error(f"FAISS index file not found in {category_dir}")
+        index_path.mkdir(parents=True, exist_ok=True)
+        vector_db.save_local(persist_dir)
+        if not (index_path / "index.faiss").exists():
+            logging.error(f"FAISS index file not found in {persist_dir}")
             return None
-        logging.info(f"Embedded newsletter {message_id} stored in category directory: {category_dir}")
+        logging.info(f"Embedded newsletter {message_id} stored in {persist_dir}")
 
         newsletter.vectorized = True
         db.commit()
@@ -77,7 +73,7 @@ def embed_chunked_newsletter(
         logging.info(
             f"Successfully embedded and stored newsletter {message_id} into {persist_dir}"
         )
-        logger.debug("FAISS files stored under %s", category_dir)
+        logger.debug("FAISS files stored under %s", persist_dir)
         return vector_db
 
     except Exception as e:

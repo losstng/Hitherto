@@ -10,7 +10,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
   const extract = useExtract(n.message_id);
   const chunk = useChunk(n.message_id);
   const embed = useEmbed(n.message_id);
-  const { setContext, pushMessage } = useChatContext();
+  const { context, toggleContext, pushMessage } = useChatContext();
   const [category, setCategory] = useState(n.category ?? "");
   const [hasText, setHasText] = useState(!!n.has_text);
   const [vectorized, setVectorized] = useState(!!n.vectorized);
@@ -83,14 +83,20 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         </button>
         <button
           onClick={async () => {
+            const selected = context.some((c) => c.messageId === n.message_id);
+            if (selected) {
+              toggleContext({ messageId: n.message_id, title: n.title, chunks: [], category: n.category, receivedAt: n.received_at });
+              return;
+            }
             await ensureExtracted();
             await chunk.mutateAsync();
             const { data } = await api.get(`/ingest/chunked_text/${n.message_id}`);
-            if (data.success) setContext({ messageId: n.message_id, chunks: data.data.chunks });
+            if (data.success)
+              toggleContext({ messageId: n.message_id, title: n.title, chunks: data.data.chunks, category: n.category, receivedAt: n.received_at });
           }}
           className="btn"
         >
-          Select
+          {context.some((c) => c.messageId === n.message_id) ? "Deselect" : "Select"}
         </button>
       </td>
     </tr>
