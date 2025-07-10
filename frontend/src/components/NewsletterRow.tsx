@@ -12,11 +12,16 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
   const embed = useEmbed(n.message_id);
   const { setContext, pushMessage } = useChatContext();
   const [category, setCategory] = useState(n.category ?? "");
+  const [hasText, setHasText] = useState(!!n.has_text);
+  const [vectorized, setVectorized] = useState(!!n.vectorized);
 
   const ensureExtracted = async () => {
     try {
       await extract.mutateAsync(undefined, {
-        onSuccess: (data) => setCategory(data.category),
+        onSuccess: (data) => {
+          setCategory(data.category);
+          setHasText(true);
+        },
       });
     } catch (_) {
       // ignore errors - backend handles idempotency
@@ -33,22 +38,29 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         <button
           onClick={() =>
             extract.mutate(undefined, {
-              onSuccess: (data) => setCategory(data.category),
+              onSuccess: (data) => {
+                setCategory(data.category);
+                setHasText(true);
+              },
             })
           }
           className="btn"
+          disabled={hasText}
         >
-          Extract
+          Extract {hasText && "✓"}
         </button>
         <button
           onClick={async () => {
             await ensureExtracted();
             await chunk.mutateAsync();
-            await embed.mutateAsync();
+            await embed.mutateAsync(undefined, {
+              onSuccess: () => setVectorized(true),
+            });
           }}
           className="btn"
+          disabled={vectorized}
         >
-          Vector
+          Vector {vectorized && "✓"}
         </button>
         <button
           onClick={async () => {

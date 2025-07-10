@@ -11,6 +11,9 @@ export interface NewsletterLite {
   message_id: string;
   received_at: string;
   category?: string | null;
+  has_text?: boolean;
+  has_chunks?: boolean;
+  vectorized?: boolean;
 }
 
 export type ReloadResp  = { new_entries: number };

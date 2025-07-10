@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 import logging
 import os
+from .utils import safe_filename
 
 def embed_chunked_newsletter(
     db: Session, message_id: str, persist_dir: str = "db/faiss_store"
@@ -54,7 +55,8 @@ def embed_chunked_newsletter(
         vector_db = FAISS.from_documents(documents, embedding_model, ids=ids)
 
         # Dynamically assign persist_dir based on category and month for sharding
-        category = (newsletter.category or "uncategorized").lower().replace(" ", "_")
+        raw_category = (newsletter.category or "uncategorized").lower().replace(" ", "_")
+        category = safe_filename(raw_category)
         month = (
             newsletter.received_at.strftime("%Y-%m")
             if isinstance(newsletter.received_at, datetime)
@@ -67,6 +69,10 @@ def embed_chunked_newsletter(
             logging.error(f"FAISS index file not found in {category_dir}")
             return None
         logging.info(f"Embedded newsletter {message_id} stored in category directory: {category_dir}")
+
+        newsletter.vectorized = True
+        db.commit()
+        db.refresh(newsletter)
 
         logging.info(
             f"Successfully embedded and stored newsletter {message_id} into {persist_dir}"
