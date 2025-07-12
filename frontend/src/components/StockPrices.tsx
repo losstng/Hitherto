@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 import { useStockQuotes } from "@/hooks/useStocks";
 
 const DEFAULT_TICKERS = [
@@ -14,11 +15,16 @@ const DEFAULT_TICKERS = [
 
 export default function StockPrices() {
   const { data, isLoading } = useStockQuotes(DEFAULT_TICKERS);
+  const sortedData = useMemo(
+    () =>
+      data ? [...data].sort((a, b) => a.symbol.localeCompare(b.symbol)) : [],
+    [data]
+  );
 
   return (
     <div className="text-sm border-b px-4 py-2 space-y-1">
       {isLoading && <p>Loading stocks…</p>}
-      {data?.map((q) => (
+      {sortedData.map((q) => (
         <div key={q.symbol} className="flex justify-between">
           <span>{q.symbol}</span>
           {q.error ? (
