@@ -64,6 +64,14 @@ npm run dev
 
 Navigate to <http://localhost:3000> in your browser.
 
+### Embedding model cache
+
+The embedding routines rely on the
+`sentence-transformers/all-MiniLM-L6-v2` model. When running in an
+environment without internet access, set the `HF_MODEL_DIR` environment
+variable to a folder containing the pre-downloaded model files. The
+services will load the embeddings from this directory.
+
 ## Notes for large language models
 
 The available API routes are defined under `backend/routers`. `ingest.py`

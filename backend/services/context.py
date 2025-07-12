@@ -1,10 +1,11 @@
 from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
 
 from datetime import datetime
 import logging
 import os
+
+from .utils import load_embedding_model
 
 def retrieve_context(
     query: str,
@@ -17,11 +18,9 @@ def retrieve_context(
     """Retrieve relevant chunks filtered by category and optional date range."""
     try:
         device = os.environ.get("EMBEDDING_DEVICE", "cpu")
-        embedding_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={"device": device},
-            encode_kwargs={"device": device},
-        )
+        embedding_model = load_embedding_model(device)
+        if embedding_model is None:
+            return []
 
         start_dt = datetime.fromisoformat(start_date).date() if start_date else None
         end_dt = datetime.fromisoformat(end_date).date() if end_date else None

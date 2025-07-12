@@ -1,12 +1,13 @@
 from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
 from sqlalchemy.orm import Session
 from ..models import Newsletter
 from pathlib import Path
 from datetime import datetime
 import logging
 import os
+
+from .utils import load_embedding_model
 
 def embed_chunked_newsletter(
     db: Session, message_id: str, persist_dir: str = "db/faiss_store"
@@ -47,11 +48,9 @@ def embed_chunked_newsletter(
 
         # Initialize embedding model
         device = os.environ.get("EMBEDDING_DEVICE", "cpu")
-        embedding_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={"device": device},
-            encode_kwargs={"device": device},
-        )
+        embedding_model = load_embedding_model(device)
+        if embedding_model is None:
+            return None
 
         index_path = Path(persist_dir)
         if (index_path / "index.faiss").exists():
