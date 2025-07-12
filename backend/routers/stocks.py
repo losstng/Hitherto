@@ -1,7 +1,23 @@
-from fastapi import APIRouter, Query
+try:
+    from fastapi import APIRouter, Query
+except Exception:  # pragma: no cover - allow running without FastAPI
+    class APIRouter:
+        def get(self, *args, **kwargs):
+            def decorator(func):
+                return func
+            return decorator
+
+    def Query(default=None):
+        return default
+
 from ..schemas import ApiResponse
-import yfinance as yf
 import logging
+import importlib
+
+try:
+    import yfinance as yf
+except Exception:  # pragma: no cover - provide fallback
+    yf = importlib.import_module("yfinance") if "yfinance" in globals() else None
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

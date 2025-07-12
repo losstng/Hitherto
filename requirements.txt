@@ -43,5 +43,6 @@ statsmodels
 matplotlib
 seaborn
 plotly
-notebook ipywidgets
+notebook
+ipywidgets
 jupyter

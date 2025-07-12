@@ -1,8 +1,12 @@
+from __future__ import annotations
 import logging
 import os
 import re
 
-from langchain.embeddings import HuggingFaceEmbeddings
+try:
+    from langchain.embeddings import HuggingFaceEmbeddings
+except Exception:  # pragma: no cover - optional dependency may be missing
+    HuggingFaceEmbeddings = None  # type: ignore
 
 
 def safe_filename(name: str) -> str:
@@ -16,6 +20,9 @@ def load_embedding_model(device: str) -> HuggingFaceEmbeddings | None:
     model_kwargs = {"device": device}
     if cache_dir:
         model_kwargs["cache_folder"] = cache_dir
+    if HuggingFaceEmbeddings is None:
+        logging.warning("HuggingFaceEmbeddings not available; returning None")
+        return None
 
     try:
         return HuggingFaceEmbeddings(
