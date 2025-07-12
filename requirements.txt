@@ -43,6 +43,5 @@ statsmodels
 matplotlib
 seaborn
 plotly
-
-# Serialization
-pickle5
+notebook ipywidgets
+jupyter
