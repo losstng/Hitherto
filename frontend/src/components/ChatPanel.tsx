@@ -56,6 +56,15 @@ export default function ChatPanel() {
         }
       } else if (context.length > 0) {
         chunks = context.flatMap((c) => c.chunks);
+      } else {
+        const { data } = await api.post("/context", {
+          query: text,
+          categories: [],
+          start_date: null,
+          end_date: null,
+          k: 5,
+        });
+        if (data.success) chunks = data.data.map((d: any) => d.page_content);
       }
 
       if (chunks.length > 0) payload.chunks = chunks;
