@@ -31,20 +31,11 @@ async def ask(payload: AskPayload):
                 return ApiResponse(success=False, error="No context for RAG")
 
             combined = "\n\n".join(payload.chunks)
-            prompt = (
-                "Use the following context to answer the question.\n\n"
-                f"{combined}\n\nQuestion: {payload.query}\nAnswer:"
-            )
+            logger.debug("Returning combined RAG context of %d chars", len(combined))
 
-            import openai, os
-
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-            resp = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            reply = resp.choices[0].message["content"].strip()
-            return ApiResponse(success=True, data={"reply": reply, "source": "rag"})
+            # Instead of calling an LLM, simply return the combined context so
+            # the frontend can display or further process it.
+            return ApiResponse(success=True, data={"reply": combined, "source": "rag"})
 
         reply = f"You asked: {payload.query}"
         logger.debug(f"Reply generated: {reply}")
