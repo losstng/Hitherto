@@ -1,83 +1,63 @@
 # Hitherto
-# Hitherto
 
-This project contains a FastAPI backend and a Next.js frontend. The backend
-provides a small API for ingesting newsletters and querying them with language
-models, while the frontend offers a basic interface for exploration.
+Hitherto is a small research environment built around a FastAPI backend and a Next.js frontend. The backend ingests Gmail newsletters, vectorizes them for semantic search and exposes a minimal API, while the frontend offers a simple interface for browsing and querying the stored text.
 
-## Setup
+## Quick start
 
-1. Install the Python dependencies:
+1. *(Optional)* create and activate a virtual environment:
+   ```bash
+   python -m venv .venv && source .venv/bin/activate
+   ```
+2. Install backend dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Install frontend packages:
+   ```bash
+   cd frontend && npm install && cd ..
+   ```
+4. Provide configuration files:
+   - `.env` defines `DATABASE_URL`, `GMAIL_SCOPE`, and other OAuth details.
+   - `credentials.json` holds the Google OAuth client information.
+   - `token.json` will be created after completing the OAuth flow.
+5. Start the API server:
+   ```bash
+   export PYTHONPATH=$(pwd)
+   python -m uvicorn backend.main:app --reload --log-level debug \
+     --port "${FASTAPI_PORT:-8000}"
+   ```
+6. In another terminal, launch the frontend:
+   ```bash
+   cd frontend && npm run dev
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+Visit <http://localhost:3000> to use the app.
 
-2. Install the frontend packages (optional if you only want the API):
+## Repository layout
 
-```bash
-cd frontend
-npm install
-cd ..
-```
+- **backend/** – FastAPI service with routers under `routers/` and helpers in `services/`.
+- **frontend/** – Next.js application.
+- **debug_tools/** – Gmail API debugging helpers.
+- **scripts/** – Utility shell commands such as `clean_pycache.sh`.
+- **db/** – Local FAISS index stored in `faiss_store/`.
+- **SystemPrompt.txt** – Prompt text used for LLM summaries.
+- `credentials.json`, `token.json` and `.env` contain sensitive credentials.
 
-### Development notes
+## Embedding model cache
 
-To avoid unnecessary Python bytecode during development, this project
-uses an `.envrc` file that sets `PYTHONDONTWRITEBYTECODE=1`.
-If you have [direnv](https://direnv.net/) installed, run `direnv allow`
-after cloning the repo so Python will skip generating `__pycache__`
-folders. You can also manually source the file:
+The `sentence-transformers/all-MiniLM-L6-v2` model is used for embeddings. If running offline, set `HF_MODEL_DIR` to a directory containing the downloaded model so the services load it from disk.
 
-```bash
-source .envrc
-```
+## Testing
 
-When needed, run `scripts/clean_pycache.sh` to remove any lingering
-`__pycache__` directories.
-
-## Running the backend
-
-The server reads the `FASTAPI_PORT` environment variable (falling back to
-`PORT` or `8000`) so the port remains consistent across restarts. You can set up
-the environment and start the application with:
-
-```bash
-export PYTHONPATH=$(pwd)
-export FASTAPI_PORT=8000  # choose any port you like
-python -m backend.main
-```
-
-If you prefer running `uvicorn` directly:
-
-```bash
-python -m uvicorn backend.main:app --reload --log-level debug \
-  --port "${FASTAPI_PORT:-8000}"
-```
-
-## Running the frontend
+Run the unit tests from the repository root:
 
 ```bash
-cd frontend
-npm run dev
+pytest -q
 ```
 
-Navigate to <http://localhost:3000> in your browser.
+## API notes
 
-### Embedding model cache
-
-The embedding routines rely on the
-`sentence-transformers/all-MiniLM-L6-v2` model. When running in an
-environment without internet access, set the `HF_MODEL_DIR` environment
-variable to a folder containing the pre-downloaded model files. The
-services will load the embeddings from this directory.
-
-## Notes for large language models
-
-The available API routes are defined under `backend/routers`. `ingest.py`
-handles newsletter ingestion and `query.py` exposes a simple `/ask` endpoint for
-question answering. LLMs can read this README to quickly understand how to start
-the backend and interact with these routes.
+The API routes are implemented in `backend/routers`. `ingest.py` handles newsletter ingestion and `query.py` exposes a simple `/ask` endpoint for question answering. Additional stock-related routes live in `stocks.py`.
 
 ## API Checklist
 
