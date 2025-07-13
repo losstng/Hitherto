@@ -11,6 +11,7 @@ from fastapi.routing import APIRoute
 import os
 from .routers import ingest, query  # Adjust based on actual folder structure
 from .routers import stocks
+from .routers import notebook
 import pickle
 #  export PYTHONPATH=$(pwd)
 # Run with: python -m uvicorn backend.main:app --reload --log-level debug
@@ -53,6 +54,7 @@ app.add_middleware(
 app.include_router(ingest.router, prefix="/ingest", tags=["Ingest"])
 app.include_router(query.router, tags=["Query"])
 app.include_router(stocks.router, prefix="/stocks", tags=["Stocks"])
+app.include_router(notebook.router, prefix="/notebook", tags=["Notebook"])
 
 # Log available routes on startup
 for route in app.routes:

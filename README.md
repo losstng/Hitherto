@@ -33,6 +33,8 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
 
 Visit <http://localhost:3000> to use the app.
 
+The sidebar also links to an **Analytics** page which provides a simple Jupyter-style notebook backed by the FastAPI API.
+
 ## Repository layout
 
 - **backend/** – FastAPI service with routers under `routers/` and helpers in `services/`.
