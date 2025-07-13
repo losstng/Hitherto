@@ -3,6 +3,7 @@ import uuid
 import json
 import logging
 from pathlib import Path
+import os
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -32,13 +33,20 @@ class Session:
         if KernelManager is None:
             raise RuntimeError("jupyter_client not available")
         self.km = KernelManager()
-        self.km.start_kernel()
+        env = os.environ.copy()
+        # Disable parent polling so kernels persist if the web server reloads
+        env.setdefault("JPY_PARENT_PID", "1")
+        self.km.start_kernel(env=env)
         self.kc = self.km.client()
         self.kc.start_channels()
 
     def shutdown(self) -> None:
         self.kc.stop_channels()
         self.km.shutdown_kernel(now=True)
+        try:
+            self.km.cleanup_resources()
+        except Exception:
+            pass
 
 
 SESSIONS: dict[str, Session] = {}
