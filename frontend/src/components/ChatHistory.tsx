@@ -9,17 +9,23 @@ export default function ChatHistory({ messages, loading }: { messages: ChatMessa
   const [height, setHeight] = useState(0);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) setHeight(containerRef.current.clientHeight);
+    const node = containerRef.current;
+    if (!node) return;
+    const update = () => setHeight(node.clientHeight);
+    const ro = new ResizeObserver(update);
+    ro.observe(node);
+    update();
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
     };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const itemCount = messages.length + (loading ? 1 : 0);
 
   useEffect(() => {
+    listRef.current?.resetAfterIndex(0);
     listRef.current?.scrollToItem(itemCount - 1);
   }, [messages, loading, itemCount]);
 
