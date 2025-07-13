@@ -1,5 +1,5 @@
 "use client";
-import { ReactCodeMirror } from "@uiw/react-codemirror";
+import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 
 export default function CodeEditor({ value, onChange }: Props) {
   return (
-    <ReactCodeMirror
+    <CodeMirror
       value={value}
       extensions={[python()]}
       height="auto"
