@@ -20,7 +20,7 @@ export default function ChatHistory({ messages, loading }: { messages: ChatMessa
       ro.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, []);
+  }, [messages.length]);
 
   const itemCount = messages.length + (loading ? 1 : 0);
 
