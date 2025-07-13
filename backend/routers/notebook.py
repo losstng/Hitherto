@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - optional dependency may be missing
     KernelManager = None  # type: ignore
 
-router = APIRouter(prefix="/notebook", tags=["Notebook"])
+router = APIRouter(tags=["Notebook"])
 logger = logging.getLogger(__name__)
 
 
