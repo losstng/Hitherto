@@ -30,7 +30,7 @@ export default function EmailsPage() {
           {data && <NewsletterTable data={data} />}
         </div>
         <div className="w-1/2 flex flex-col h-full">
-          <div className="flex items-center gap-4 p-2 border-b bg-white/75 backdrop-blur sticky top-0">
+          <div className=" flex max-h-[6vh] items-center gap-4 p-2 border-b bg-white/75 backdrop-blur sticky top-0">
             <CategorySelect value={cat} onChange={setCat} />
             <DateRangeFilter
               start={start}
