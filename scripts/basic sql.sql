@@ -7,3 +7,7 @@ SET chunked_text = NULL;
 
 UPDATE newsletter
 SET vectorized = false;
+
+UPDATE newsletter
+SET vectorized = false
+where id = 155;
