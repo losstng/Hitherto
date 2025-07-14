@@ -97,14 +97,21 @@ def execute_cell(session: str, payload: ExecutePayload) -> ApiResponse:
                 stderr += content.get("text", "")
         elif mtype == "error":
             stderr += "\n".join(content.get("traceback", []))
-        elif mtype == "display_data":
+        elif mtype in {"display_data", "execute_result"}:
             data = content.get("data", {})
             if "text/html" in data:
                 html += data["text/html"]
+            if "text/plain" in data and not html:
+                stdout += data["text/plain"]
             if "image/png" in data:
                 images.append(f"data:image/png;base64,{data['image/png']}")
         elif mtype == "status" and content.get("execution_state") == "idle":
             break
+
+    try:
+        kc.get_shell_msg(timeout=1)
+    except Exception:
+        pass
     return ApiResponse(
         success=True,
         data={
