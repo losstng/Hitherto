@@ -147,7 +147,8 @@ def get_variables(session: str) -> ApiResponse:
     code = (
         "import json, builtins, types\n"
         "print(json.dumps({k: repr(v) for k, v in globals().items() "
-        "if not k.startswith('_') and k not in builtins.__dict__ "
+        "if k not in {'In','Out','get_ipython','quit','exit'} "
+        "and not k.startswith('_') and k not in builtins.__dict__ "
         "and not isinstance(v, types.ModuleType)}))"
     )
     kc = sess.kc
