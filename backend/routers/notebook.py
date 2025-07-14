@@ -113,6 +113,13 @@ def execute_cell(session: str, payload: ExecutePayload) -> ApiResponse:
     )
 
 
+@router.get("/list", response_model=ApiResponse)
+def list_notebooks() -> ApiResponse:
+    """Return saved notebook IDs."""
+    items = [p.stem for p in NOTEBOOK_DIR.glob("*.ipynb")]
+    return ApiResponse(success=True, data=items)
+
+
 @router.post("/{session}/save", response_model=ApiResponse)
 def save_notebook(session: str, payload: NotebookPayload) -> ApiResponse:
     """Persist notebook JSON to disk."""
@@ -124,6 +131,37 @@ def save_notebook(session: str, payload: NotebookPayload) -> ApiResponse:
     except Exception as exc:  # pragma: no cover - file write error
         logger.exception("Failed saving notebook")
         return ApiResponse(success=False, error=str(exc))
+
+
+@router.get("/{session}/variables", response_model=ApiResponse)
+def get_variables(session: str) -> ApiResponse:
+    """Return a mapping of variable names to repr() strings."""
+    sess = SESSIONS.get(session)
+    if not sess:
+        return ApiResponse(success=False, error="Invalid session")
+
+    code = (
+        "import json, builtins, types\n"
+        "print(json.dumps({k: repr(v) for k, v in globals().items() "
+        "if not k.startswith('_') and k not in builtins.__dict__ "
+        "and not isinstance(v, types.ModuleType)}))"
+    )
+    kc = sess.kc
+    kc.execute(code)
+    stdout = ""
+    while True:
+        msg = kc.get_iopub_msg(timeout=10)
+        mtype = msg["header"]["msg_type"]
+        content = msg["content"]
+        if mtype == "stream":
+            stdout += content.get("text", "")
+        elif mtype == "status" and content.get("execution_state") == "idle":
+            break
+    try:
+        variables = json.loads(stdout.strip() or "{}")
+    except Exception:
+        variables = {}
+    return ApiResponse(success=True, data=variables)
 
 
 @router.get("/{session}/load", response_model=ApiResponse)
