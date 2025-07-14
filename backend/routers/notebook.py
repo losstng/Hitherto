@@ -28,6 +28,10 @@ class NotebookPayload(BaseModel):
     notebook: dict
 
 
+class RenamePayload(BaseModel):
+    new_name: str
+
+
 class Session:
     def __init__(self) -> None:
         if KernelManager is None:
@@ -178,6 +182,49 @@ def load_notebook(session: str) -> ApiResponse:
         return ApiResponse(success=False, error=str(exc))
 
 
+@router.get("/file/{name}", response_model=ApiResponse)
+def load_file(name: str) -> ApiResponse:
+    """Load a notebook by filename."""
+    path = NOTEBOOK_DIR / f"{name}.ipynb"
+    if not path.exists():
+        return ApiResponse(success=False, error="Not found")
+    try:
+        data = json.loads(path.read_text())
+        return ApiResponse(success=True, data=data)
+    except Exception as exc:  # pragma: no cover - file read error
+        logger.exception("Failed loading notebook")
+        return ApiResponse(success=False, error=str(exc))
+
+
+@router.post("/file/{name}/rename", response_model=ApiResponse)
+def rename_file(name: str, payload: RenamePayload) -> ApiResponse:
+    """Rename a saved notebook file."""
+    src = NOTEBOOK_DIR / f"{name}.ipynb"
+    dst = NOTEBOOK_DIR / f"{payload.new_name}.ipynb"
+    if not src.exists():
+        return ApiResponse(success=False, error="Not found")
+    try:
+        src.rename(dst)
+        return ApiResponse(success=True, data=True)
+    except Exception as exc:  # pragma: no cover - file rename error
+        logger.exception("Failed renaming notebook")
+        return ApiResponse(success=False, error=str(exc))
+
+
+@router.post("/file/{name}/delete", response_model=ApiResponse)
+def delete_file(name: str) -> ApiResponse:
+    """Delete a saved notebook file."""
+    path = NOTEBOOK_DIR / f"{name}.ipynb"
+    if not path.exists():
+        return ApiResponse(success=False, error="Not found")
+    try:
+        path.unlink()
+        return ApiResponse(success=True, data=True)
+    except Exception as exc:  # pragma: no cover - file delete error
+        logger.exception("Failed deleting notebook")
+        return ApiResponse(success=False, error=str(exc))
+
+
 @router.post("/{session}/shutdown", response_model=ApiResponse)
 def shutdown_session(session: str) -> ApiResponse:
     """Terminate a kernel session."""
@@ -191,3 +238,4 @@ def shutdown_session(session: str) -> ApiResponse:
     except Exception as exc:  # pragma: no cover - kernel shutdown error
         logger.exception("Failed to shutdown kernel")
         return ApiResponse(success=False, error=str(exc))
+

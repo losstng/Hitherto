@@ -23,3 +23,21 @@ def test_list_endpoint():
 
     notebook.shutdown_session(sid)
 
+
+def test_rename_and_delete():
+    resp = notebook.new_session()
+    assert resp.success is True
+    sid = resp.data["session_id"]
+    notebook.save_notebook(sid, notebook.NotebookPayload(notebook={"cells": []}))
+
+    rename = notebook.rename_file(sid, notebook.RenamePayload(new_name="test1"))
+    assert rename.success is True
+    assert not (notebook.NOTEBOOK_DIR / f"{sid}.ipynb").exists()
+    assert (notebook.NOTEBOOK_DIR / "test1.ipynb").exists()
+
+    delete = notebook.delete_file("test1")
+    assert delete.success is True
+    assert not (notebook.NOTEBOOK_DIR / "test1.ipynb").exists()
+
+    notebook.shutdown_session(sid)
+

@@ -10,16 +10,20 @@ export interface CellData {
 
 interface NotebookCtx {
   session: string;
+  file: string;
   cells: CellData[];
   addCell(): void;
   updateCell(id: string, code: string): void;
   runCell(id: string): Promise<void>;
+  openFile(name: string): Promise<void>;
+  setFile(name: string): void;
 }
 
 const NotebookContext = createContext<NotebookCtx | null>(null);
 
 export function NotebookProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState("");
+  const [file, setFile] = useState("");
   const [cells, setCells] = useState<CellData[]>([]);
 
   useEffect(() => {
@@ -28,6 +32,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
       if (data.success) {
         const sid = data.data.session_id as string;
         setSession(sid);
+        setFile(sid);
         const res = await api.get(`/notebook/${sid}/load`);
         if (res.data.success && res.data.data) {
           setCells(res.data.data.cells as CellData[]);
@@ -69,9 +74,24 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const openFile = async (name: string) => {
+    const { data } = await api.post("/notebook/new");
+    if (data.success) {
+      const sid = data.data.session_id as string;
+      setSession(sid);
+      setFile(name);
+      const res = await api.get(`/notebook/file/${name}`);
+      if (res.data.success && res.data.data) {
+        setCells(res.data.data.cells as CellData[]);
+      } else {
+        setCells([]);
+      }
+    }
+  };
+
   return (
     <NotebookContext.Provider
-      value={{ session, cells, addCell, updateCell, runCell }}
+      value={{ session, file, cells, addCell, updateCell, runCell, openFile, setFile }}
     >
       {children}
     </NotebookContext.Provider>
@@ -83,4 +103,5 @@ export const useNotebook = () => {
   if (!ctx) throw new Error("Notebook context missing");
   return ctx;
 };
+
 
