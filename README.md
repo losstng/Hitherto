@@ -33,6 +33,10 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
 
 Visit <http://localhost:3000> to use the app.
 
+The sidebar also links to an **Analytics** page providing a simple Jupyter-style notebook backed by the FastAPI API. The notebook view includes a side panel to toggle between saved notebooks and variables defined in the running session. Internal IPython variables such as `In` or `Out` are filtered so only user-defined variables appear. The latest saved notebook opens automatically and the panel allows creating, opening, renaming or deleting notebooks. Changes are persisted automatically and a **Save Notebook** button lets you manually save at any time. When switching notebooks or creating a new one the previous kernel is shut down so no orphan sessions linger.
+Autosave waits until a notebook finishes loading so existing files aren't cleared when opening them.
+A **Reload List** button in the notebook sidebar fetches the latest files on demand.
+
 ## Repository layout
 
 - **backend/** – FastAPI service with routers under `routers/` and helpers in `services/`.

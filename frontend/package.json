@@ -16,7 +16,9 @@
     "react": "^19.1.0",
     "react-day-picker": "^9.8.0",
     "date-fns": "^4.1.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@uiw/react-codemirror": "^4.24.0",
+    "@codemirror/lang-python": "^6.2.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

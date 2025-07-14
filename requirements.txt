@@ -46,3 +46,5 @@ plotly
 notebook
 ipywidgets
 jupyter
+jupyter_client
+ipykernel
