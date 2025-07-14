@@ -58,46 +58,22 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
       // ensure the file exists so the sidebar list updates
       await api.post(`/notebook/${sid}/save`, { notebook: { cells: starter } });
       setLoaded(true);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("notebookSession", sid);
-        localStorage.setItem("notebookFile", sid);
-      }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("notebookFile", sid);
+    }
     }
   };
 
   useEffect(() => {
     async function init() {
-      const storedSession =
-        typeof window !== "undefined" ? localStorage.getItem("notebookSession") : null;
       const storedFile =
         typeof window !== "undefined" ? localStorage.getItem("notebookFile") : null;
-      if (storedSession) {
-        try {
-          const check = await api.get(`/notebook/${storedSession}/variables`);
-          if (check.data.success) {
-            setSession(storedSession);
-            const fname = storedFile || storedSession;
-            setFileName(fname);
-            const loadPath =
-              fname && fname !== storedSession
-                ? `/notebook/file/${fname}`
-                : `/notebook/${storedSession}/load`;
-            const res = await api.get(loadPath);
-            if (res.data.success && res.data.data) {
-              setCells(res.data.data.cells as CellData[]);
-            } else {
-              setCells([]);
-            }
-            return;
-          }
-        } catch (e) {
-          // fallthrough
-        }
-      }
-
       const res = await api.get("/notebook/list");
-      if (res.data.success && (res.data.data as string[]).length) {
-        openFile(res.data.data[0]);
+      const list = res.data.success ? (res.data.data as string[]) : [];
+      if (storedFile && list.includes(storedFile)) {
+        openFile(storedFile);
+      } else if (list.length) {
+        openFile(list[0]);
       } else {
         newNotebook();
       }
@@ -145,10 +121,9 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
       const sid = data.data.session_id as string;
       setSession(sid);
       setFileName(name);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("notebookSession", sid);
-        localStorage.setItem("notebookFile", name);
-      }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("notebookFile", name);
+    }
       const res = await api.get(`/notebook/file/${name}`);
       if (res.data.success && res.data.data) {
         setCells(res.data.data.cells as CellData[]);

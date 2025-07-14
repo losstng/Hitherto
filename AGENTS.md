@@ -15,6 +15,8 @@ This document explains the layout of the project and the quickest way for automa
 - **frontend/** – Next.js application using the App Router.
   - `components/` contains UI elements such as the newsletter table.
   - `app/actions/` and `hooks/` wrap API requests and React Query helpers.
+  - The Analytics page exposes a lightweight notebook interface (the former
+    variables panel has been removed).
 
 - **debug_tools/** – Helper scripts for manual Gmail API debugging.
 - **scripts/** – Utility shell scripts such as `clean_pycache.sh`.

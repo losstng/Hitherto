@@ -46,20 +46,6 @@ def test_rename_and_delete():
     notebook.shutdown_session(sid)
 
 
-def test_variable_filtering():
-    resp = notebook.new_session()
-    assert resp.success is True
-    sid = resp.data["session_id"]
-
-    # define a variable inside the session
-    notebook.execute_cell(sid, notebook.ExecutePayload(cellId="c1", code="pd = 1"))
-    vars_resp = notebook.get_variables(sid)
-    assert vars_resp.success is True
-    data = vars_resp.data
-    assert data == {"pd": "1"}
-
-    notebook.shutdown_session(sid)
-
 
 def test_load_invalid_json(tmp_path):
     bad = notebook.NOTEBOOK_DIR / "bad.ipynb"
@@ -75,4 +61,5 @@ def test_load_invalid_json(tmp_path):
     assert resp2.success is True
     assert resp2.data is None
     empty.unlink()
+
 
