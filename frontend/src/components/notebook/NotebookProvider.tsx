@@ -47,12 +47,16 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
       const sid = data.data.session_id as string;
       setSession(sid);
       setFileName(sid);
-      setCells([
+      const starter = [
         {
           id: `cell-${Date.now()}`,
-          code: "import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\n%matplotlib inline",
+          code:
+            "import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\n%matplotlib inline",
         },
-      ]);
+      ];
+      setCells(starter);
+      // ensure the file exists so the sidebar list updates
+      await api.post(`/notebook/${sid}/save`, { notebook: { cells: starter } });
       setLoaded(true);
       if (typeof window !== "undefined") {
         localStorage.setItem("notebookSession", sid);

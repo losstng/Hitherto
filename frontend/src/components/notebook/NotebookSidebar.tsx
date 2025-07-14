@@ -59,6 +59,16 @@ export default function NotebookSidebar() {
             >
               New Notebook
             </button>
+            <button
+              className="bg-gray-200 w-full py-1 mb-2 rounded"
+              onClick={() =>
+                api.get("/notebook/list").then((res) => {
+                  if (res.data.success) setNotebooks(res.data.data as string[]);
+                })
+              }
+            >
+              Reload List
+            </button>
             <ul>
             {notebooks.map((n) => (
               <li key={n} className="flex items-center justify-between">
