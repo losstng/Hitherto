@@ -27,6 +27,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState("");
   const [file, setFile] = useState("");
   const [cells, setCells] = useState<CellData[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const shutdown = async () => {
     if (session) {
@@ -40,6 +41,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
 
   const newNotebook = async () => {
     await shutdown();
+    setLoaded(false);
     const { data } = await api.post("/notebook/new");
     if (data.success) {
       const sid = data.data.session_id as string;
@@ -51,6 +53,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
           code: "import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\n%matplotlib inline",
         },
       ]);
+      setLoaded(true);
       if (typeof window !== "undefined") {
         localStorage.setItem("notebookSession", sid);
         localStorage.setItem("notebookFile", sid);
@@ -99,10 +102,10 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || !loaded) return;
     const path = file && file !== session ? `/notebook/file/${file}/save` : `/notebook/${session}/save`;
     api.post(path, { notebook: { cells } });
-  }, [cells, session, file]);
+  }, [cells, session, file, loaded]);
 
   useEffect(() => {
     return () => {
@@ -132,6 +135,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
 
   const openFile = async (name: string) => {
     await shutdown();
+    setLoaded(false);
     const { data } = await api.post("/notebook/new");
     if (data.success) {
       const sid = data.data.session_id as string;
@@ -144,8 +148,10 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
       const res = await api.get(`/notebook/file/${name}`);
       if (res.data.success && res.data.data) {
         setCells(res.data.data.cells as CellData[]);
+        setLoaded(true);
       } else {
         setCells([]);
+        setLoaded(true);
       }
     }
   };
