@@ -187,10 +187,13 @@ def load_notebook(session: str) -> ApiResponse:
     if not path.exists():
         return ApiResponse(success=True, data=None)
     try:
-        data = json.loads(path.read_text())
+        text = path.read_text()
+        if not text.strip():
+            return ApiResponse(success=True, data=None)
+        data = json.loads(text)
         return ApiResponse(success=True, data=data)
     except json.JSONDecodeError:
-        logger.exception("Failed loading notebook")
+        logger.warning("Corrupted notebook file %s", path)
         return ApiResponse(success=True, data=None)
     except Exception as exc:  # pragma: no cover - file read error
         logger.exception("Failed loading notebook")
@@ -204,10 +207,13 @@ def load_file(name: str) -> ApiResponse:
     if not path.exists():
         return ApiResponse(success=False, error="Not found")
     try:
-        data = json.loads(path.read_text())
+        text = path.read_text()
+        if not text.strip():
+            return ApiResponse(success=True, data=None)
+        data = json.loads(text)
         return ApiResponse(success=True, data=data)
     except json.JSONDecodeError:
-        logger.exception("Failed loading notebook")
+        logger.warning("Corrupted notebook file %s", path)
         return ApiResponse(success=True, data=None)
     except Exception as exc:  # pragma: no cover - file read error
         logger.exception("Failed loading notebook")

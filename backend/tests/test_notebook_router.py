@@ -69,3 +69,10 @@ def test_load_invalid_json(tmp_path):
     assert resp.data is None
     bad.unlink()
 
+    empty = notebook.NOTEBOOK_DIR / "empty.ipynb"
+    empty.write_text("")
+    resp2 = notebook.load_file("empty")
+    assert resp2.success is True
+    assert resp2.data is None
+    empty.unlink()
+
