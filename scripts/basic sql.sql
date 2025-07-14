@@ -9,5 +9,5 @@ UPDATE newsletter
 SET vectorized = false;
 
 UPDATE newsletter
-SET vectorized = false
+SET vectorized = true
 where id = 155;
