@@ -3,7 +3,7 @@ import { useNotebook } from "./NotebookProvider";
 import Cell from "./Cell";
 
 export default function Notebook() {
-  const { cells, addCell } = useNotebook();
+  const { cells, addCell, save } = useNotebook();
   return (
     <div className="p-4 space-y-4">
       {cells.map((c) => (
@@ -14,6 +14,12 @@ export default function Notebook() {
         onClick={addCell}
       >
         Add Cell
+      </button>
+      <button
+        className="py-1 px-3 bg-blue-500 text-white rounded"
+        onClick={save}
+      >
+        Save Notebook
       </button>
     </div>
   );

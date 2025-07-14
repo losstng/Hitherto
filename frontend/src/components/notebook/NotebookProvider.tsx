@@ -17,6 +17,7 @@ interface NotebookCtx {
   runCell(id: string): Promise<void>;
   openFile(name: string): Promise<void>;
   newNotebook(): Promise<void>;
+  save(): Promise<void>;
   setFile(name: string): void;
 }
 
@@ -131,6 +132,13 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const saveNotebook = async () => {
+    if (!session) return;
+    const path =
+      file && file !== session ? `/notebook/file/${file}/save` : `/notebook/${session}/save`;
+    await api.post(path, { notebook: { cells } });
+  };
+
   const setFileName = (name: string) => {
     setFile(name);
     if (typeof window !== "undefined") {
@@ -140,7 +148,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <NotebookContext.Provider
-      value={{ session, file, cells, addCell, updateCell, runCell, openFile, newNotebook, setFile: setFileName }}
+      value={{ session, file, cells, addCell, updateCell, runCell, openFile, newNotebook, save: saveNotebook, setFile: setFileName }}
     >
       {children}
     </NotebookContext.Provider>
