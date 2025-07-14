@@ -28,7 +28,18 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
   const [file, setFile] = useState("");
   const [cells, setCells] = useState<CellData[]>([]);
 
+  const shutdown = async () => {
+    if (session) {
+      try {
+        await api.post(`/notebook/${session}/shutdown`);
+      } catch (e) {
+        // ignore network errors
+      }
+    }
+  };
+
   const newNotebook = async () => {
+    await shutdown();
     const { data } = await api.post("/notebook/new");
     if (data.success) {
       const sid = data.data.session_id as string;
@@ -93,6 +104,12 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
     api.post(path, { notebook: { cells } });
   }, [cells, session, file]);
 
+  useEffect(() => {
+    return () => {
+      shutdown();
+    };
+  }, [session]);
+
   const addCell = () =>
     setCells((c) => [...c, { id: `cell-${Date.now()}`, code: "" }]);
 
@@ -114,6 +131,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const openFile = async (name: string) => {
+    await shutdown();
     const { data } = await api.post("/notebook/new");
     if (data.success) {
       const sid = data.data.session_id as string;
