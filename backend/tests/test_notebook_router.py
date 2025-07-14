@@ -60,3 +60,12 @@ def test_variable_filtering():
 
     notebook.shutdown_session(sid)
 
+
+def test_load_invalid_json(tmp_path):
+    bad = notebook.NOTEBOOK_DIR / "bad.ipynb"
+    bad.write_text("not json")
+    resp = notebook.load_file("bad")
+    assert resp.success is True
+    assert resp.data is None
+    bad.unlink()
+

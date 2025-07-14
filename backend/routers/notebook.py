@@ -189,6 +189,9 @@ def load_notebook(session: str) -> ApiResponse:
     try:
         data = json.loads(path.read_text())
         return ApiResponse(success=True, data=data)
+    except json.JSONDecodeError:
+        logger.exception("Failed loading notebook")
+        return ApiResponse(success=True, data=None)
     except Exception as exc:  # pragma: no cover - file read error
         logger.exception("Failed loading notebook")
         return ApiResponse(success=False, error=str(exc))
@@ -203,6 +206,9 @@ def load_file(name: str) -> ApiResponse:
     try:
         data = json.loads(path.read_text())
         return ApiResponse(success=True, data=data)
+    except json.JSONDecodeError:
+        logger.exception("Failed loading notebook")
+        return ApiResponse(success=True, data=None)
     except Exception as exc:  # pragma: no cover - file read error
         logger.exception("Failed loading notebook")
         return ApiResponse(success=False, error=str(exc))
