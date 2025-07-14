@@ -16,6 +16,7 @@ interface NotebookCtx {
   updateCell(id: string, code: string): void;
   runCell(id: string): Promise<void>;
   openFile(name: string): Promise<void>;
+  newNotebook(): Promise<void>;
   setFile(name: string): void;
 }
 
@@ -26,24 +27,28 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
   const [file, setFile] = useState("");
   const [cells, setCells] = useState<CellData[]>([]);
 
+  const newNotebook = async () => {
+    const { data } = await api.post("/notebook/new");
+    if (data.success) {
+      const sid = data.data.session_id as string;
+      setSession(sid);
+      setFile(sid);
+      setCells([
+        {
+          id: `cell-${Date.now()}`,
+          code: "import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\n%matplotlib inline",
+        },
+      ]);
+    }
+  };
+
   useEffect(() => {
     async function init() {
-      const { data } = await api.post("/notebook/new");
-      if (data.success) {
-        const sid = data.data.session_id as string;
-        setSession(sid);
-        setFile(sid);
-        const res = await api.get(`/notebook/${sid}/load`);
-        if (res.data.success && res.data.data) {
-          setCells(res.data.data.cells as CellData[]);
-        } else {
-          setCells([
-            {
-              id: `cell-${Date.now()}`,
-              code: "import pandas as pd\nimport numpy as np\nimport matplotlib.pyplot as plt\n%matplotlib inline",
-            },
-          ]);
-        }
+      const res = await api.get("/notebook/list");
+      if (res.data.success && (res.data.data as string[]).length) {
+        openFile(res.data.data[0]);
+      } else {
+        newNotebook();
       }
     }
     init();
@@ -51,8 +56,9 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!session) return;
-    api.post(`/notebook/${session}/save`, { notebook: { cells } });
-  }, [cells, session]);
+    const path = file && file !== session ? `/notebook/file/${file}/save` : `/notebook/${session}/save`;
+    api.post(path, { notebook: { cells } });
+  }, [cells, session, file]);
 
   const addCell = () =>
     setCells((c) => [...c, { id: `cell-${Date.now()}`, code: "" }]);
@@ -91,7 +97,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <NotebookContext.Provider
-      value={{ session, file, cells, addCell, updateCell, runCell, openFile, setFile }}
+      value={{ session, file, cells, addCell, updateCell, runCell, openFile, newNotebook, setFile }}
     >
       {children}
     </NotebookContext.Provider>

@@ -10,18 +10,22 @@ def test_new_session_and_shutdown():
     assert shutdown.success is True
 
 
-def test_list_endpoint():
-    resp = notebook.new_session()
-    assert resp.success is True
-    sid = resp.data["session_id"]
+def test_list_and_save_file():
+    resp1 = notebook.new_session()
+    sid1 = resp1.data["session_id"]
+    notebook.save_notebook(sid1, notebook.NotebookPayload(notebook={"cells": []}))
+    notebook.shutdown_session(sid1)
 
-    # save empty notebook to create file
-    notebook.save_notebook(sid, notebook.NotebookPayload(notebook={"cells": []}))
+    resp2 = notebook.new_session()
+    sid2 = resp2.data["session_id"]
+    notebook.save_file(sid2, notebook.NotebookPayload(notebook={"cells": []}))
+    notebook.shutdown_session(sid2)
+
     lst = notebook.list_notebooks()
     assert lst.success is True
-    assert sid in lst.data
-
-    notebook.shutdown_session(sid)
+    names = lst.data
+    assert names[0] == sid2
+    assert names[1] == sid1
 
 
 def test_rename_and_delete():

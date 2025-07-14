@@ -33,7 +33,7 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
 
 Visit <http://localhost:3000> to use the app.
 
-The sidebar also links to an **Analytics** page which provides a simple Jupyter-style notebook backed by the FastAPI API. The notebook view includes a side panel to toggle between a list of saved notebooks and the variables currently defined in the running session.  Internal IPython variables such as `In` or `Out` are filtered so only user-defined variables appear. Saved notebooks can now be opened, renamed or deleted from this panel.
+The sidebar also links to an **Analytics** page providing a simple Jupyter-style notebook backed by the FastAPI API. The notebook view includes a side panel to toggle between saved notebooks and variables defined in the running session. Internal IPython variables such as `In` or `Out` are filtered so only user-defined variables appear. The latest saved notebook opens automatically and the panel allows creating, opening, renaming or deleting notebooks.
 
 ## Repository layout
 

@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { useNotebook } from "./NotebookProvider";
 
 export default function NotebookSidebar() {
-  const { session, cells, openFile, file, setFile } = useNotebook();
+  const { session, cells, openFile, newNotebook, file, setFile } = useNotebook();
   const [tab, setTab] = useState<"notebooks" | "variables">("notebooks");
   const [notebooks, setNotebooks] = useState<string[]>([]);
   const [variables, setVariables] = useState<Record<string, string>>({});
@@ -47,7 +47,19 @@ export default function NotebookSidebar() {
       </div>
       <div className="p-2 overflow-y-auto flex-1">
         {tab === "notebooks" ? (
-          <ul className="text-sm space-y-1">
+          <div className="text-sm space-y-1">
+            <button
+              className="bg-blue-500 text-white w-full py-1 mb-2 rounded"
+              onClick={async () => {
+                await newNotebook();
+                api.get("/notebook/list").then((res) => {
+                  if (res.data.success) setNotebooks(res.data.data as string[]);
+                });
+              }}
+            >
+              New Notebook
+            </button>
+            <ul>
             {notebooks.map((n) => (
               <li key={n} className="flex items-center justify-between">
                 <button
@@ -91,6 +103,7 @@ export default function NotebookSidebar() {
               <li className="text-gray-500">No notebooks</li>
             )}
           </ul>
+          </div>
         ) : (
           <ul className="text-sm space-y-1">
             {Object.entries(variables).map(([k, v]) => (

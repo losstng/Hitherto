@@ -126,9 +126,13 @@ def execute_cell(session: str, payload: ExecutePayload) -> ApiResponse:
 
 @router.get("/list", response_model=ApiResponse)
 def list_notebooks() -> ApiResponse:
-    """Return saved notebook IDs."""
-    items = [p.stem for p in NOTEBOOK_DIR.glob("*.ipynb")]
-    return ApiResponse(success=True, data=items)
+    """Return saved notebook IDs sorted by modification time (newest first)."""
+    items = sorted(
+        NOTEBOOK_DIR.glob("*.ipynb"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    return ApiResponse(success=True, data=[p.stem for p in items])
 
 
 @router.post("/{session}/save", response_model=ApiResponse)
@@ -201,6 +205,19 @@ def load_file(name: str) -> ApiResponse:
         return ApiResponse(success=True, data=data)
     except Exception as exc:  # pragma: no cover - file read error
         logger.exception("Failed loading notebook")
+        return ApiResponse(success=False, error=str(exc))
+
+
+@router.post("/file/{name}/save", response_model=ApiResponse)
+def save_file(name: str, payload: NotebookPayload) -> ApiResponse:
+    """Persist notebook JSON under a specific filename."""
+    path = NOTEBOOK_DIR / f"{name}.ipynb"
+    try:
+        path.write_text(json.dumps(payload.notebook))
+        logger.debug("Saved notebook %s", path)
+        return ApiResponse(success=True, data=True)
+    except Exception as exc:  # pragma: no cover - file write error
+        logger.exception("Failed saving notebook")
         return ApiResponse(success=False, error=str(exc))
 
 
