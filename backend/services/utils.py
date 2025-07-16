@@ -35,5 +35,19 @@ def load_embedding_model(device: str) -> HuggingFaceEmbeddings | None:
             "Failed to load embedding model. Ensure model weights are available.",
             exc_info=exc,
         )
+        if device != "cpu":
+            try:
+                logging.info("Retrying embedding model load on CPU")
+                model_kwargs["device"] = "cpu"
+                return HuggingFaceEmbeddings(
+                    model_name="sentence-transformers/all-MiniLM-L6-v2",
+                    model_kwargs=model_kwargs,
+                    encode_kwargs={"device": "cpu"},
+                )
+            except Exception:
+                logging.exception("Retry on CPU failed")
+        return None
+    except Exception as exc:
+        logging.exception("Failed to load embedding model", exc_info=exc)
         return None
 
