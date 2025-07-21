@@ -71,3 +71,16 @@ The API routes are implemented in `backend/routers`. `ingest.py` handles newslet
   - [ ] **Vector** – chunk and vectorize text for retrieval
   - [ ] **Text** – return the raw extracted text
   - [ ] **Select** – to be finished
+
+### Key modules
+
+- `backend/main.py` bootstraps the FastAPI app.
+- `backend/routers/ingest.py` ingests Gmail newsletters.
+- `backend/routers/query.py` serves the `/ask` endpoint.
+- `backend/routers/notebook.py` powers the analytics notebook page.
+- `backend/services/email_service.py` talks to Gmail.
+- `backend/services/vector.py` manages embeddings and the FAISS index.
+- `backend/services/chunking.py` and `token_counter.py` split text for vectors.
+- `frontend/src/app/` contains Next.js routes.
+- `frontend/src/components/` holds React components.
+- `frontend/src/hooks/` wraps API calls for React Query.

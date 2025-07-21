@@ -64,3 +64,20 @@ This document explains the layout of the project and the quickest way for automa
 ## Development cleanup
 
 Python bytecode is disabled via the `.envrc` file which sets `PYTHONDONTWRITEBYTECODE=1`. If any `__pycache__` directories appear, run `scripts/clean_pycache.sh`.
+
+## Important modules
+
+- `backend/main.py` – entry point configuring the FastAPI application and routes.
+- `backend/routers/ingest.py` – Gmail ingestion endpoint.
+- `backend/routers/query.py` – question-answering endpoint.
+- `backend/routers/notebook.py` – API for the Jupyter-style notebook page.
+- `backend/routers/stocks.py` – simple stock information routes.
+- `backend/services/email_service.py` – functions for pulling email from Gmail.
+- `backend/services/chunking.py` – text chunking helpers.
+- `backend/services/vector.py` – embedding generation and vector store logic.
+- `backend/services/token_counter.py` – counts tokens for splitting text.
+- `backend/tests/` – unit tests run with `pytest -q`.
+- `frontend/src/app/` – Next.js routes used by the UI.
+- `frontend/src/components/` – shared React components.
+- `frontend/src/hooks/` – React hooks wrapping API calls.
+- `notebooks/` – example notebooks referenced by the analytics page.
