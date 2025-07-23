@@ -18,6 +18,7 @@ class ContextPayload(BaseModel):
     start_date: str | None = None
     end_date: str | None = None
     k: int = 5
+    message_ids: list[str] | None = None
 
 @router.post("/ask", response_model=ApiResponse)
 async def ask(payload: AskPayload):
@@ -59,6 +60,7 @@ async def context_search(payload: ContextPayload):
         start_date=payload.start_date,
         end_date=payload.end_date,
         k=payload.k,
+        message_ids=payload.message_ids,
     )
     items = [
         {"page_content": d.page_content, "metadata": d.metadata}

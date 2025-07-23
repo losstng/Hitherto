@@ -20,44 +20,33 @@ export default function ChatPanel() {
     chunks?: string[];
   }
 
-  const ask = useMutation({
+const ask = useMutation({
     mutationFn: async ({ text, mode }: { text: string; mode: string }) => {
       const payload: AskPayload = { query: text, mode };
-      const oc = context.filter((c) => c.oc);
-      const sel = context.filter((c) => !c.oc);
-
       let chunks: string[] = [];
 
-      if (filters.category || filters.start || filters.end) {
-        if (oc.length > 0 && sel.length > 0) {
-          chunks = context.flatMap((c) => c.chunks);
-        } else if (oc.length > 0 && sel.length === 0) {
-          chunks = oc.flatMap((c) => c.chunks);
-          const { data } = await api.post("/context", {
-            query: text,
-            categories: filters.category ? [filters.category] : [],
-            start_date: filters.start || null,
-            end_date: filters.end || null,
-            k: 5,
-          });
-          if (data.success)
-            chunks = [...chunks, ...data.data.map((d: any) => d.page_content)];
-        } else if (sel.length === 0) {
-          const { data } = await api.post("/context", {
-            query: text,
-            categories: filters.category ? [filters.category] : [],
-            start_date: filters.start || null,
-            end_date: filters.end || null,
-            k: 5,
-          });
-          if (data.success) chunks = data.data.map((d: any) => d.page_content);
-        } else {
-          chunks = sel.flatMap((c) => c.chunks);
-        }
-      } else if (context.length > 0) {
-        chunks = context.flatMap((c) => c.chunks);
+      if (context.length > 0) {
+        const ids = context.map((c) => c.messageId);
+        const { data } = await api.post('/context', {
+          query: text,
+          categories: [],
+          start_date: null,
+          end_date: null,
+          message_ids: ids,
+          k: 5,
+        });
+        if (data.success) chunks = data.data.map((d: any) => d.page_content);
+      } else if (filters.category || filters.start || filters.end) {
+        const { data } = await api.post('/context', {
+          query: text,
+          categories: filters.category ? [filters.category] : [],
+          start_date: filters.start || null,
+          end_date: filters.end || null,
+          k: 5,
+        });
+        if (data.success) chunks = data.data.map((d: any) => d.page_content);
       } else {
-        const { data } = await api.post("/context", {
+        const { data } = await api.post('/context', {
           query: text,
           categories: [],
           start_date: null,
@@ -69,7 +58,7 @@ export default function ChatPanel() {
 
       if (chunks.length > 0) payload.chunks = chunks;
 
-      const { data } = await api.post("/ask", payload);
+      const { data } = await api.post('/ask', payload);
       return data as { success: boolean; data: AskResp };
     },
     onSuccess: (data) => {
