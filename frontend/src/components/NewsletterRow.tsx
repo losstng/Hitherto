@@ -84,6 +84,24 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         </button>
         <button
           onClick={async () => {
+            await ensureExtracted();
+            const tok = await tokenize.mutateAsync();
+            pushMessage({
+              id: `${Date.now()}-tok`,
+              role: "assistant",
+              text: `${n.title} has ${tok.token_count} tokens`,
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            });
+          }}
+          className="btn"
+        >
+          Tokens
+        </button>
+        <button
+          onClick={async () => {
             const selected = context.some((c) => c.messageId === n.message_id);
             if (selected) {
               toggleContext({ messageId: n.message_id, title: n.title, chunks: [], category: n.category, receivedAt: n.received_at });
