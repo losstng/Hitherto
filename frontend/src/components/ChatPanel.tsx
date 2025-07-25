@@ -89,7 +89,12 @@ const ask = useMutation({
       {context.length > 0 && (
         <div className="flex items-center px-3 py-2 text-xs border-b bg-gray-50">
           <span className="flex-1">
-            Context: {context.map((c) => `${c.title}${c.oc ? " (OC)" : ""}`).join(", ")}
+            Context:
+            {context
+              .map((c) =>
+                `${c.title} [${c.tokenCount ?? 0} tokens]${c.oc ? " (OC)" : ""}`
+              )
+              .join(", ")}
           </span>
           <button onClick={clearContext} className="text-blue-600 underline ml-2">
             Clear
