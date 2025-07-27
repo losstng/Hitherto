@@ -24,7 +24,7 @@ export default function EmailsPage() {
       <div className="flex flex-1 h-full">
         <div className="w-1/2 space-y-4 p-4 overflow-y-auto h-full">
           <p className="italic text-rose-900 text-center font-semibold mb-2">
-            "Do what you know best, trust yourself"
+            &quot;Do what you know best, trust yourself&quot;
           </p>
           {isFetching && <p>Loading emails…</p>}
           {data && <NewsletterTable data={data} />}
