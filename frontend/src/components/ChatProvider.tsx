@@ -6,6 +6,7 @@ export interface ChatCtxItem {
   messageId: string;
   title: string;
   chunks: string[];
+  tokenCount?: number;
   category?: string | null;
   receivedAt?: string;
   oc?: boolean;

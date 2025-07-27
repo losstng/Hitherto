@@ -13,6 +13,7 @@ def retrieve_context(
     start_date: str | None = None,
     end_date: str | None = None,
     k: int = 5,
+    message_ids: list[str] | None = None,
     persist_base_dir: str = "db/faiss_store",
 ) -> list[Document]:
     """Retrieve relevant chunks filtered by category and optional date range."""
@@ -43,6 +44,9 @@ def retrieve_context(
             meta = d.metadata or {}
             cat = meta.get("category")
             if categories and cat not in categories:
+                continue
+            mid = meta.get("message_id")
+            if message_ids and mid not in message_ids:
                 continue
             try:
                 rec = meta.get("received_at")

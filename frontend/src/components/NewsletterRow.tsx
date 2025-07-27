@@ -1,6 +1,6 @@
 // src/components/NewsletterRow.tsx
 "use client";
-import { useExtract, useChunk, useEmbed } from "@/app/actions/useProcess";
+import { useExtract, useChunk, useEmbed, useTokenize } from "@/app/actions/useProcess";
 import { NewsletterLite } from "@/lib/types";
 import { useChatContext } from "./ChatProvider";
 import { api } from "@/lib/api";
@@ -10,6 +10,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
   const extract = useExtract(n.message_id);
   const chunk = useChunk(n.message_id);
   const embed = useEmbed(n.message_id);
+  const tokenize = useTokenize(n.message_id);
   const { context, toggleContext, pushMessage } = useChatContext();
   const [category, setCategory] = useState(n.category ?? "");
   const [hasText, setHasText] = useState(!!n.has_text);
@@ -83,6 +84,24 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
         </button>
         <button
           onClick={async () => {
+            await ensureExtracted();
+            const tok = await tokenize.mutateAsync();
+            pushMessage({
+              id: `${Date.now()}-tok`,
+              role: "assistant",
+              text: `${n.title} has ${tok.token_count} tokens`,
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            });
+          }}
+          className="btn"
+        >
+          Tokens
+        </button>
+        <button
+          onClick={async () => {
             const selected = context.some((c) => c.messageId === n.message_id);
             if (selected) {
               toggleContext({ messageId: n.message_id, title: n.title, chunks: [], category: n.category, receivedAt: n.received_at });
@@ -90,9 +109,17 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
             }
             await ensureExtracted();
             await chunk.mutateAsync();
+            const tok = await tokenize.mutateAsync();
             const { data } = await api.get(`/ingest/chunked_text/${n.message_id}`);
             if (data.success)
-              toggleContext({ messageId: n.message_id, title: n.title, chunks: data.data.chunks, category: n.category, receivedAt: n.received_at });
+              toggleContext({
+                messageId: n.message_id,
+                title: n.title,
+                chunks: data.data.chunks,
+                category: n.category,
+                receivedAt: n.received_at,
+                tokenCount: tok.token_count,
+              });
           }}
           className="btn"
         >
