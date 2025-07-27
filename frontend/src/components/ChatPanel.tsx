@@ -1,7 +1,7 @@
 "use client";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { ChatMessage } from "@/lib/types";
+import { ChatMessage, ApiResponse, ContextDoc } from "@/lib/types";
 import ChatHistory from "./ChatHistory";
 import MessageInput from "./MessageInput";
 import { useChatContext } from "./ChatProvider";
@@ -27,7 +27,7 @@ const ask = useMutation({
 
       if (context.length > 0) {
         const ids = context.map((c) => c.messageId);
-        const { data } = await api.post('/context', {
+        const { data } = await api.post<ApiResponse<ContextDoc[]>>('/context', {
           query: text,
           categories: [],
           start_date: null,
@@ -35,31 +35,31 @@ const ask = useMutation({
           message_ids: ids,
           k: 5,
         });
-        if (data.success) chunks = data.data.map((d: any) => d.page_content);
+        if (data.success) chunks = data.data.map((d) => d.page_content);
       } else if (filters.category || filters.start || filters.end) {
-        const { data } = await api.post('/context', {
+        const { data } = await api.post<ApiResponse<ContextDoc[]>>('/context', {
           query: text,
           categories: filters.category ? [filters.category] : [],
           start_date: filters.start || null,
           end_date: filters.end || null,
           k: 5,
         });
-        if (data.success) chunks = data.data.map((d: any) => d.page_content);
+        if (data.success) chunks = data.data.map((d) => d.page_content);
       } else {
-        const { data } = await api.post('/context', {
+        const { data } = await api.post<ApiResponse<ContextDoc[]>>('/context', {
           query: text,
           categories: [],
           start_date: null,
           end_date: null,
           k: 5,
         });
-        if (data.success) chunks = data.data.map((d: any) => d.page_content);
+        if (data.success) chunks = data.data.map((d) => d.page_content);
       }
 
       if (chunks.length > 0) payload.chunks = chunks;
 
-      const { data } = await api.post('/ask', payload);
-      return data as { success: boolean; data: AskResp };
+      const { data } = await api.post<ApiResponse<AskResp>>('/ask', payload);
+      return data;
     },
     onSuccess: (data) => {
       const reply: ChatMessage = {

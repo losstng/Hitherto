@@ -24,7 +24,7 @@ export default function NewsletterRow({ n }: { n: NewsletterLite }) {
           setHasText(true);
         },
       });
-    } catch (_) {
+    } catch {
       // ignore errors - backend handles idempotency
     }
   };

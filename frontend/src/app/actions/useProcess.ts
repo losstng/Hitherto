@@ -1,7 +1,13 @@
 // src/hooks/useProcess.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { ApiResponse } from "@/lib/types";
+import {
+  ApiResponse,
+  ExtractResp,
+  ChunkResp,
+  EmbedResp,
+  TokenResp,
+} from "@/lib/types";
 
 const useWrap = <T,>(url: string) => {
   const client = useQueryClient();
@@ -17,7 +23,11 @@ const useWrap = <T,>(url: string) => {
   });
 };
 
-export const useExtract  = (id: string) => useWrap(`/ingest/extract_text/${id}`);
-export const useChunk    = (id: string) => useWrap(`/ingest/chunk/${id}`);
-export const useEmbed    = (id: string) => useWrap(`/ingest/embed/${id}`);
-export const useTokenize = (id: string) => useWrap(`/ingest/tokenize/${id}`);
+export const useExtract = (id: string) =>
+  useWrap<ExtractResp>(`/ingest/extract_text/${id}`);
+export const useChunk = (id: string) =>
+  useWrap<ChunkResp>(`/ingest/chunk/${id}`);
+export const useEmbed = (id: string) =>
+  useWrap<EmbedResp>(`/ingest/embed/${id}`);
+export const useTokenize = (id: string) =>
+  useWrap<TokenResp>(`/ingest/tokenize/${id}`);

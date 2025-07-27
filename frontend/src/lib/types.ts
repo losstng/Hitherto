@@ -24,6 +24,28 @@ export type ExtractResp = {
   extracted_text_preview: string;
 };
 
+export type ChunkResp = {
+  message_id: string;
+  has_chunks: boolean;
+};
+
+export interface EmbedResp {
+  message_id: string;
+  embedded?: boolean;
+  already_embedded?: boolean;
+  vectorized: boolean;
+}
+
+export type TokenResp = {
+  message_id: string;
+  token_count: number;
+};
+
+export interface ContextDoc {
+  page_content: string;
+  metadata: Record<string, unknown>;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
