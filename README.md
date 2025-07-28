@@ -33,8 +33,6 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
 
 Visit <http://localhost:3000> to use the app.
 
-The sidebar also links to an **Analytics** page with a lightweight Jupyter-style notebook backed by the FastAPI API. A sidebar lists available notebooks and lets you create, open, rename or delete them. Changes are saved automatically and you can manually save at any time using the **Save Notebook** button. When switching notebooks or creating a new one the previous kernel shuts down so no orphan sessions linger. Autosave waits until a notebook finishes loading, and a **Reload List** button refreshes the file list on demand.
-
 ## Repository layout
 
 - **backend/** – FastAPI service with routers under `routers/` and helpers in `services/`.
@@ -77,7 +75,6 @@ The API routes are implemented in `backend/routers`. `ingest.py` handles newslet
 - `backend/main.py` bootstraps the FastAPI app.
 - `backend/routers/ingest.py` ingests Gmail newsletters.
 - `backend/routers/query.py` serves the `/ask` endpoint.
-- `backend/routers/notebook.py` powers the analytics notebook page.
 - `backend/services/email_service.py` talks to Gmail.
 - `backend/services/vector.py` manages embeddings and the FAISS index.
 - `backend/services/chunking.py` and `token_counter.py` split text for vectors.

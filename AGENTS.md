@@ -15,8 +15,6 @@ This document explains the layout of the project and the quickest way for automa
 - **frontend/** – Next.js application using the App Router.
   - `components/` contains UI elements such as the newsletter table.
   - `app/actions/` and `hooks/` wrap API requests and React Query helpers.
-  - The Analytics page exposes a lightweight notebook interface (the former
-    variables panel has been removed).
 
 - **debug_tools/** – Helper scripts for manual Gmail API debugging.
 - **scripts/** – Utility shell scripts such as `clean_pycache.sh`.
@@ -70,7 +68,6 @@ Python bytecode is disabled via the `.envrc` file which sets `PYTHONDONTWRITEBYT
 - `backend/main.py` – entry point configuring the FastAPI application and routes.
 - `backend/routers/ingest.py` – Gmail ingestion endpoint.
 - `backend/routers/query.py` – question-answering endpoint.
-- `backend/routers/notebook.py` – API for the Jupyter-style notebook page.
 - `backend/routers/stocks.py` – simple stock information routes.
 - `backend/services/email_service.py` – functions for pulling email from Gmail.
 - `backend/services/chunking.py` – text chunking helpers.
@@ -80,4 +77,3 @@ Python bytecode is disabled via the `.envrc` file which sets `PYTHONDONTWRITEBYT
 - `frontend/src/app/` – Next.js routes used by the UI.
 - `frontend/src/components/` – shared React components.
 - `frontend/src/hooks/` – React hooks wrapping API calls.
-- `notebooks/` – example notebooks referenced by the analytics page.
