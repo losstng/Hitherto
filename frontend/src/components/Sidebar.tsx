@@ -34,12 +34,6 @@ export default function Sidebar() {
         >
           Emails
         </Link>
-        <Link
-          href="/analytics"
-          className={`block px-3 py-2 rounded-md text-sm ${pathname === "/analytics" ? "bg-white shadow" : "hover:bg-gray-200"}`}
-        >
-          Analytics
-        </Link>
       </nav>
     </aside>
   );
