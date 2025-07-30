@@ -37,7 +37,13 @@ def retrieve_context(
             allow_dangerous_deserialization=True,
         )
 
-        raw_docs = vector_db.similarity_search(query, k=50)
+        search_filter = {}
+        if categories:
+            search_filter["category"] = {"$in": categories}
+        if message_ids:
+            search_filter["message_id"] = {"$in": message_ids}
+
+        raw_docs = vector_db.similarity_search(query, k=50, filter=search_filter or None)
 
         filtered: list[Document] = []
         for d in raw_docs:
