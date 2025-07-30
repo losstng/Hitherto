@@ -25,7 +25,7 @@ export default function DateRangeFilter({
     <div className="relative">
       <button
         type="button"
-        className="border rounded px-2 py-1"
+        className="border rounded px-2 py-1 flex-shrink-0"
         onClick={() => setOpen(!open)}
       >
         {selected?.from

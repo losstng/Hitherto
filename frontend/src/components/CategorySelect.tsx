@@ -19,7 +19,7 @@ export default function CategorySelect({
         onChange(e.target.value);
         setFilters({ category: e.target.value });
       }}
-      className="border rounded px-2 py-1"
+      className="border rounded px-2 py-1 flex-shrink-0"
     >
       <option value="">All categories</option>
       {sorted?.map((c) => (

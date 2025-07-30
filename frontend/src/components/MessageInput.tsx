@@ -40,7 +40,7 @@ export default function MessageInput({ onSend }: Props) {
       <select
         value={mode}
         onChange={(e) => setMode(e.target.value)}
-        className="border rounded px-1 text-sm"
+        className="border rounded px-2 py-1 text-sm flex-shrink-0"
       >
         <option value="rag">RAG</option>
         <option value="llm">LLM</option>
