@@ -6,7 +6,7 @@ UPDATE newsletter
 SET chunked_text = NULL;
 
 UPDATE newsletter
-SET vectorized = false;
+SET vectorized = false;a
 
 UPDATE newsletter
 SET vectorized = true
