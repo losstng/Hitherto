@@ -1,5 +1,6 @@
 import os
 import logging
+import threading
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
@@ -7,6 +8,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 
 from .services.email_service import get_authenticated_gmail_service
+from .services.price_email import run_price_email_loop
 from .database import engine
 from . import models
 from .routers import ingest, query, stocks  # Adjust if needed
@@ -31,6 +33,9 @@ async def lifespan(app: FastAPI):
         logger.info("Gmail service authenticated on startup.")
     else:
         logger.error("Failed to authenticate Gmail service on startup.")
+
+    # Start price email notifications in a background thread
+    threading.Thread(target=run_price_email_loop, daemon=True).start()
 
     # Database setup
     try:

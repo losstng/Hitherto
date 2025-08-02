@@ -57,14 +57,22 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         return False
 
 
-def run_every_five_minutes() -> None:
-    """Continuously send price emails every five minutes."""
+def run_price_email_loop(interval: int | None = None) -> None:
+    """Continuously send price emails on a fixed interval.
+
+    Parameters
+    ----------
+    interval:
+        Sleep duration in seconds between emails. Defaults to the value of
+        ``PRICE_EMAIL_INTERVAL`` or 300 if unset.
+    """
     tickers = os.getenv("PRICE_EMAIL_TICKERS")
     recipient = os.getenv("PRICE_EMAIL_RECIPIENT")
+    interval = interval or int(os.getenv("PRICE_EMAIL_INTERVAL", "300"))
     while True:
         send_price_email(tickers, recipient)
-        time.sleep(300)
+        time.sleep(interval)
 
 
 if __name__ == "__main__":
-    run_every_five_minutes()
+    run_price_email_loop()
