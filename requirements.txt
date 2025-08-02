@@ -32,6 +32,7 @@ huggingface-hub
 
 # Data Handling
 pandas
+pandas-market-calendars
 numpy
 bs4
 yfinance
