@@ -4,7 +4,7 @@ import os
 import re
 
 try:
-    from langchain.embeddings import HuggingFaceEmbeddings
+    from langchain_community.embeddings import HuggingFaceEmbeddings
 except Exception:  # pragma: no cover - optional dependency may be missing
     HuggingFaceEmbeddings = None  # type: ignore
 
