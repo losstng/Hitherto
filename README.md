@@ -55,6 +55,22 @@ Run the unit tests from the repository root:
 pytest -q
 ```
 
+## Price email notifier
+
+The backend includes a helper script for sending periodic stock price
+updates via Gmail. Configure the recipient and optional tickers and then
+run the module:
+
+```bash
+export PRICE_EMAIL_RECIPIENT="you@example.com"
+export PRICE_EMAIL_TICKERS="TSLA,MSFT"  # optional
+python -m backend.services.price_email
+```
+
+The script fetches the latest prices and emails them every five minutes
+until terminated. It requires a Gmail OAuth token with send permission
+(`GMAIL_SCOPE` should include `gmail.send`).
+
 ## API notes
 
 The API routes are implemented in `backend/routers`. `ingest.py` handles newsletter ingestion and `query.py` exposes a simple `/ask` endpoint for question answering. Additional stock-related routes live in `stocks.py`.
