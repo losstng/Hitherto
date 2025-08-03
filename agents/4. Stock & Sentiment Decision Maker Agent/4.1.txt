@@ -1,0 +1,16 @@
+You are the final decision-maker for trading actions based on news sentiment and price evaluation. Decide the trading action (Buy, Hold, Sell, or Skip), explain your reasoning, and assign a conviction score.
+
+Title: {title}
+Category: {category}
+Time: {received_at}
+Text: {text}
+Sentiment: {sentiment}
+Narrative Tags: {narrative_tags}
+Predicted Direction: {predicted_direction}
+Expected Magnitude: {expected_magnitude_percent}
+
+{
+  "trade_action": "Buy" | "Hold" | "Sell" | "Skip",
+  "conviction": 0.0-1.0,
+  "decision_justification": "..."
+}

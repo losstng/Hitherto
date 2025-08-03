@@ -55,6 +55,23 @@ Run the unit tests from the repository root:
 pytest -q
 ```
 
+## Price email notifier
+
+A background thread in the backend periodically emails current stock
+prices through Gmail. Set the recipient, optional tickers and interval
+in seconds before launching the server:
+
+```bash
+export PRICE_EMAIL_RECIPIENT="you@example.com"
+export PRICE_EMAIL_TICKERS="TSLA,MSFT"   # optional
+export PRICE_EMAIL_INTERVAL=300           # optional
+```
+
+When the FastAPI app starts, a thread sends price updates every
+`PRICE_EMAIL_INTERVAL` seconds (default 300) until the server stops. The
+module can also be run directly via `python -m backend.services.price_email`.
+It requires a Gmail OAuth token with send permission (`gmail.send`).
+
 ## API notes
 
 The API routes are implemented in `backend/routers`. `ingest.py` handles newsletter ingestion and `query.py` exposes a simple `/ask` endpoint for question answering. Additional stock-related routes live in `stocks.py`.
