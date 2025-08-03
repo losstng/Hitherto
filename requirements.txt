@@ -1,6 +1,7 @@
 # Core Frameworks & APIs
 fastapi
 uvicorn
+redis
 
 # Database & ORM
 SQLAlchemy
