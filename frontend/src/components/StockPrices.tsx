@@ -3,15 +3,16 @@ import { useMemo } from "react";
 import { useStockQuotes } from "@/hooks/useStocks";
 
 const DEFAULT_TICKERS = [
-  "TSLA",
-  "GLOB",
-  "MRVL",
-  "NVDA",
-  "INOD",
-  "PLTR",
-  "DAVE",
-  "HAG.DE",
-];
+    "INOD",
+    "TSLA",
+    "MRVL",
+    "AMD",
+    "NVDA",
+    "PLTR",
+    "DAVE",
+    "HAG.DE",
+    "GC=F",
+]
 
 export default function StockPrices() {
   const { data, isLoading } = useStockQuotes(DEFAULT_TICKERS);

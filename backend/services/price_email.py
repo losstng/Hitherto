@@ -98,7 +98,7 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
 
         message = MIMEText(body, "html")
         message["to"] = recipient or "me"
-        message["subject"] = "📈 Stock Price Update"
+        message["subject"] = "Stock Price Update"
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
         service.users().messages().send(userId="me", body={"raw": raw}).execute()

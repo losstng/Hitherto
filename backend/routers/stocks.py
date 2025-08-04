@@ -26,14 +26,15 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 DEFAULT_TICKERS = [
-    "TSLA",
-    "GLOB",
-    "MRVL",
-    "NVDA",
     "INOD",
+    "TSLA",
+    "MRVL",
+    "AMD",
+    "NVDA",
     "PLTR",
     "DAVE",
     "HAG.DE",
+    "GC=F",
 ]
 
 
