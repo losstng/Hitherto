@@ -117,7 +117,7 @@ def run_price_email_loop(interval: int | None = None) -> None:
     """Continuously send stock price emails every interval."""
     tickers = os.getenv("PRICE_EMAIL_TICKERS")
     recipient = os.getenv("PRICE_EMAIL_RECIPIENT")
-    interval = interval or int(os.getenv("PRICE_EMAIL_INTERVAL", "3000"))
+    interval = interval or int(os.getenv("PRICE_EMAIL_INTERVAL", "300"))
 
     while True:
         send_price_email(tickers, recipient)
