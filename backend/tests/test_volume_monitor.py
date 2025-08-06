@@ -1,6 +1,7 @@
 import base64
 from email import message_from_bytes
 import pandas as pd
+import pytest
 from backend.services import volume_monitor
 
 
@@ -27,9 +28,44 @@ def test_detect_volume_spike_no_trigger():
 def test_volume_cache_roundtrip(tmp_path, monkeypatch):
     cache_file = tmp_path / "vol.json"
     monkeypatch.setattr(volume_monitor, "CACHE_FILE", str(cache_file))
-    volume_monitor.save_volumes_to_cache({"TSLA": 123})
+    volume_monitor.save_volumes_to_cache({"TSLA": {"volume": 123, "alerted": 111}})
     data = volume_monitor.load_cached_volumes()
-    assert data["TSLA"] == 123
+    assert data["TSLA"]["volume"] == 123
+    assert data["TSLA"]["alerted"] == 111
+
+
+def test_run_loop_skips_duplicate_alerts(monkeypatch, tmp_path):
+    cache_file = tmp_path / "vol.json"
+    monkeypatch.setattr(volume_monitor, "CACHE_FILE", str(cache_file))
+    monkeypatch.setattr(volume_monitor, "DEFAULT_TICKERS", ["TSLA"])
+
+    df = pd.DataFrame(
+        {"Volume": [100] * 5 + [300] * 5},
+        index=pd.date_range("2024-01-01", periods=10, freq="min"),
+    )
+    monkeypatch.setattr(volume_monitor, "update_intraday_csv", lambda t: df)
+
+    sent = []
+
+    def fake_send(*args, **kwargs):
+        sent.append(args)
+        return True
+
+    monkeypatch.setattr(volume_monitor, "send_volume_email", fake_send)
+
+    calls = {"n": 0}
+
+    def fake_sleep(_):
+        calls["n"] += 1
+        if calls["n"] >= 2:
+            raise StopIteration
+
+    monkeypatch.setattr(volume_monitor.time, "sleep", fake_sleep)
+
+    with pytest.raises(StopIteration):
+        volume_monitor.run_volume_monitor_loop(interval=0)
+
+    assert len(sent) == 1
 
 
 def test_send_volume_email_subject_contains_window(monkeypatch):

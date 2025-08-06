@@ -59,7 +59,18 @@ def load_cached_volumes() -> dict:
         return {}
     try:
         with open(CACHE_FILE, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+        # Normalize legacy formats where value was a number
+        normalized = {}
+        for ticker, info in data.items():
+            if isinstance(info, dict):
+                normalized[ticker] = {
+                    "volume": info.get("volume"),
+                    "alerted": info.get("alerted"),
+                }
+            else:
+                normalized[ticker] = {"volume": info, "alerted": None}
+        return normalized
     except Exception:
         logger.warning("Could not load volume cache.")
         return {}
@@ -118,10 +129,13 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
             try:
                 df = update_intraday_csv(t)
                 spike, vol, avg = detect_volume_spike(df, window=window)
-                volumes_cache[t] = vol
-                save_volumes_to_cache(volumes_cache)
-                if spike:
+                info = volumes_cache.get(t, {"volume": None, "alerted": None})
+                info["volume"] = vol
+                if spike and info.get("alerted") != vol:
                     send_volume_email(t, vol, avg, window, recipient)
+                    info["alerted"] = vol
+                volumes_cache[t] = info
+                save_volumes_to_cache(volumes_cache)
             except Exception:
                 logger.exception("Error processing ticker %s", t)
         time.sleep(interval)
