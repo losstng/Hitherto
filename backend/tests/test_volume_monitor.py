@@ -6,44 +6,43 @@ from backend.services import volume_monitor
 
 
 def test_detect_volume_spike_triggers():
-    volumes = [100] * 5 + [300] * 5
-    index = pd.date_range("2024-01-01", periods=10, freq="min")
+    volumes = [100, 100, 100, 100, 300]
+    index = pd.date_range("2024-01-01", periods=5, freq="5min")
     df = pd.DataFrame({"Volume": volumes}, index=index)
     spike, last, avg = volume_monitor.detect_volume_spike(df)
     assert bool(spike)
-    assert last == 1500
-    assert avg == 900
+    assert last == 300
+    assert avg == 100
 
 
 def test_detect_volume_spike_no_trigger():
-    volumes = [100] * 10
-    index = pd.date_range("2024-01-01", periods=10, freq="min")
+    volumes = [100] * 5
+    index = pd.date_range("2024-01-01", periods=5, freq="5min")
     df = pd.DataFrame({"Volume": volumes}, index=index)
     spike, last, avg = volume_monitor.detect_volume_spike(df)
     assert not bool(spike)
-    assert last == 500
-    assert avg == 500
+    assert last == 100
+    assert avg == 100
 
 
-def test_volume_cache_roundtrip(tmp_path, monkeypatch):
-    cache_file = tmp_path / "vol.json"
-    monkeypatch.setattr(volume_monitor, "CACHE_FILE", str(cache_file))
-    volume_monitor.save_volumes_to_cache({"TSLA": {"volume": 123, "alerted": 111}})
-    data = volume_monitor.load_cached_volumes()
-    assert data["TSLA"]["volume"] == 123
-    assert data["TSLA"]["alerted"] == 111
+def test_alert_file_roundtrip(tmp_path, monkeypatch):
+    alert_file = tmp_path / "alerts.json"
+    monkeypatch.setattr(volume_monitor, "ALERT_FILE", alert_file)
+    volume_monitor.save_alerted_volumes({"TSLA": {"last_volume": 123, "alerted": "ts"}})
+    data = volume_monitor.load_alerted_volumes()
+    assert data["TSLA"]["last_volume"] == 123
 
 
 def test_run_loop_skips_duplicate_alerts(monkeypatch, tmp_path):
-    cache_file = tmp_path / "vol.json"
-    monkeypatch.setattr(volume_monitor, "CACHE_FILE", str(cache_file))
+    alert_file = tmp_path / "alerts.json"
+    monkeypatch.setattr(volume_monitor, "ALERT_FILE", alert_file)
     monkeypatch.setattr(volume_monitor, "DEFAULT_TICKERS", ["TSLA"])
 
     df = pd.DataFrame(
-        {"Volume": [100] * 5 + [300] * 5},
-        index=pd.date_range("2024-01-01", periods=10, freq="min"),
+        {"Volume": [100, 100, 100, 100, 300]},
+        index=pd.date_range("2024-01-01", periods=5, freq="5min"),
     )
-    monkeypatch.setattr(volume_monitor, "update_intraday_csv", lambda t: df)
+    monkeypatch.setattr(volume_monitor, "update_5min_csv", lambda t: df)
 
     sent = []
 

@@ -10,28 +10,32 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
-from .email_service import get_authenticated_gmail_service
+try:  # pragma: no cover - fallback if email deps missing
+    from .email_service import get_authenticated_gmail_service
+except Exception:  # pragma: no cover
+    def get_authenticated_gmail_service():
+        return None
 
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = REPO_ROOT / "raw_data" / "intraday"
+DATA_DIR = REPO_ROOT / "raw_data" / "5_min"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_TICKERS = ["INOD", "MRVL", "TSLA", "PLTR", "NVDA", "GC=F"]
-CACHE_FILE = "volume_cache.json"
+ALERT_FILE = DATA_DIR / "volume_alerts.json"
 
 
-def update_intraday_csv(ticker: str) -> pd.DataFrame:
-    """Fetch latest 1-minute data for ticker and append to CSV."""
-    filepath = DATA_DIR / f"intraday_{ticker}.csv"
+def update_5min_csv(ticker: str) -> pd.DataFrame:
+    """Fetch latest 5-minute data for ticker and append to CSV."""
+    filepath = DATA_DIR / f"{ticker}.csv"
     if filepath.exists():
         old_df = pd.read_csv(filepath, parse_dates=True, index_col="Datetime")
     else:
         old_df = pd.DataFrame()
     last = old_df.index.max() if not old_df.empty else None
-    start = last + timedelta(minutes=1) if last is not None else datetime.utcnow() - timedelta(days=5)
-    df = yf.Ticker(ticker).history(start=start, interval="1m")
+    start = last + timedelta(minutes=5) if last is not None else datetime.utcnow() - timedelta(days=5)
+    df = yf.Ticker(ticker).history(start=start, interval="5m")
     if df.empty:
         return old_df
     df.index.name = "Datetime"
@@ -41,48 +45,35 @@ def update_intraday_csv(ticker: str) -> pd.DataFrame:
     return combined
 
 
-def detect_volume_spike(df: pd.DataFrame, window: int = 5, multiplier: float = 1.5):
-    """Return True if the latest window shows volume > multiplier * average."""
-    if df.empty or len(df) < window + 1:
+def detect_volume_spike(df: pd.DataFrame, multiplier: float = 1.75):
+    """Return True if the latest 5m bar volume > multiplier * average of previous bars."""
+    if df.empty or len(df) < 2:
         return False, None, None
-    rolling = df["Volume"].rolling(window=window).sum()
-    last = rolling.iloc[-1]
-    prev_avg = rolling.iloc[:-1].mean()
+    last = df["Volume"].iloc[-1]
+    prev_avg = df["Volume"].iloc[:-1].mean()
     if prev_avg == 0 or pd.isna(prev_avg):
         return False, last, prev_avg
     return last > multiplier * prev_avg, last, prev_avg
 
-
-def load_cached_volumes() -> dict:
-    """Load cached volume totals from local file."""
-    if not os.path.exists(CACHE_FILE):
+def load_alerted_volumes() -> dict:
+    """Load last alerted timestamps from file."""
+    if not ALERT_FILE.exists():
         return {}
     try:
-        with open(CACHE_FILE, "r") as f:
-            data = json.load(f)
-        # Normalize legacy formats where value was a number
-        normalized = {}
-        for ticker, info in data.items():
-            if isinstance(info, dict):
-                normalized[ticker] = {
-                    "volume": info.get("volume"),
-                    "alerted": info.get("alerted"),
-                }
-            else:
-                normalized[ticker] = {"volume": info, "alerted": None}
-        return normalized
+        with open(ALERT_FILE, "r") as f:
+            return json.load(f)
     except Exception:
-        logger.warning("Could not load volume cache.")
+        logger.warning("Could not load alert file.")
         return {}
 
 
-def save_volumes_to_cache(volumes: dict) -> None:
-    """Persist latest volume totals to cache file."""
+def save_alerted_volumes(alerts: dict) -> None:
+    """Persist alert information to disk."""
     try:
-        with open(CACHE_FILE, "w") as f:
-            json.dump(volumes, f)
+        with open(ALERT_FILE, "w") as f:
+            json.dump(alerts, f)
     except Exception as e:
-        logger.warning(f"Failed to write volume cache: {e}")
+        logger.warning(f"Failed to write alert file: {e}")
 
 
 def send_volume_email(
@@ -122,20 +113,21 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
     interval = interval or int(os.getenv("VOLUME_MONITOR_INTERVAL", "300"))
     window = int(os.getenv("VOLUME_MONITOR_WINDOW", "5"))
 
-    volumes_cache = load_cached_volumes()
+    alerts = load_alerted_volumes()
 
     while True:
         for t in tickers:
             try:
-                df = update_intraday_csv(t)
-                spike, vol, avg = detect_volume_spike(df, window=window)
-                info = volumes_cache.get(t, {"volume": None, "alerted": None})
-                info["volume"] = vol
-                if spike and info.get("alerted") != vol:
+                df = update_5min_csv(t)
+                spike, vol, avg = detect_volume_spike(df)
+                last_ts = df.index[-1].isoformat() if not df.empty else None
+                info = alerts.get(t, {})
+                info["last_volume"] = vol
+                if spike and info.get("alerted") != last_ts:
                     send_volume_email(t, vol, avg, window, recipient)
-                    info["alerted"] = vol
-                volumes_cache[t] = info
-                save_volumes_to_cache(volumes_cache)
+                    info["alerted"] = last_ts
+                alerts[t] = info
+                save_alerted_volumes(alerts)
             except Exception:
                 logger.exception("Error processing ticker %s", t)
         time.sleep(interval)
