@@ -35,6 +35,7 @@ DEFAULT_TICKERS = [
     "DAVE",
     "HAG.DE",
     "GC=F",
+    "LMT",
 ]
 
 

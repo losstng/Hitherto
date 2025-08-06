@@ -37,8 +37,8 @@ async def lifespan(app: FastAPI):
         logger.error("Failed to authenticate Gmail service on startup.")
 
     # Start price and volume notifications in background threads
-    threading.Thread(target=run_price_email_loop, daemon=True).start()
-    threading.Thread(target=run_volume_monitor_loop, daemon=True).start()
+    #threading.Thread(target=run_price_email_loop, daemon=True).start()
+    #threading.Thread(target=run_volume_monitor_loop, daemon=True).start()
     threading.Thread(target=run_sec_filings_monitor_loop, daemon=True).start()
 
     # Database setup
