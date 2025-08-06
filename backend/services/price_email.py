@@ -90,6 +90,7 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
     try:
         previous = load_cached_prices()
         resp = get_stock_quotes(tickers)
+
         current = {q["symbol"]: float(q["price"]) for q in resp.data}
         if current == previous:
             logger.info("Prices unchanged; skipping email")
@@ -101,6 +102,7 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         message = MIMEText(body, "html", "utf-8")
         message["To"] = recipient
         message["Subject"] = "Stock Price Update"
+
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
