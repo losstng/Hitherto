@@ -67,11 +67,26 @@ def load_alerted_volumes() -> dict:
         return {}
 
 
+def _to_native(value):
+    """Recursively convert numpy/pandas types to native Python types."""
+    if isinstance(value, dict):
+        return {k: _to_native(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_native(v) for v in value]
+    if hasattr(value, "item"):
+        try:
+            return value.item()
+        except Exception:
+            return value
+    return value
+
+
 def save_alerted_volumes(alerts: dict) -> None:
     """Persist alert information to disk."""
     try:
+        serializable = _to_native(alerts)
         with open(ALERT_FILE, "w") as f:
-            json.dump(alerts, f)
+            json.dump(serializable, f)
     except Exception as e:
         logger.warning(f"Failed to write alert file: {e}")
 
@@ -80,7 +95,8 @@ def send_volume_email(
     ticker: str,
     volume: float,
     avg_volume: float,
-    window: int,
+    timeframe: str,
+    pct_change: float,
     recipient: str | None = None,
 ) -> bool:
     """Send an email notification about a volume spike."""
@@ -94,7 +110,9 @@ def send_volume_email(
     recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
     message = MIMEText(body, "plain", "utf-8")
     message["To"] = recipient
-    message["Subject"] = f"Volume spike for {ticker} over {window}m"
+    message["Subject"] = (
+        f"Volume spike: {ticker} | {timeframe} | {pct_change:+.2f}%"
+    )
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -122,9 +140,25 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
                 spike, vol, avg = detect_volume_spike(df)
                 last_ts = df.index[-1].isoformat() if not df.empty else None
                 info = alerts.get(t, {})
-                info["last_volume"] = vol
+                info["last_volume"] = int(vol) if vol is not None else None
+
                 if spike and info.get("alerted") != last_ts:
-                    send_volume_email(t, vol, avg, window, recipient)
+                    pct_change = 0.0
+                    if {"Open", "Close"}.issubset(df.columns):
+                        last_bar = df.iloc[-1]
+                        open_price = last_bar["Open"]
+                        close_price = last_bar["Close"]
+                        if open_price:
+                            pct_change = (close_price - open_price) / open_price * 100
+
+                    send_volume_email(
+                        t,
+                        float(vol),
+                        float(avg),
+                        f"{window}m",
+                        pct_change,
+                        recipient,
+                    )
                     info["alerted"] = last_ts
                 alerts[t] = info
                 save_alerted_volumes(alerts)

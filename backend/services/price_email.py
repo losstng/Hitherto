@@ -12,6 +12,7 @@ from ..routers.stocks import get_stock_quotes
 
 logger = logging.getLogger(__name__)
 CACHE_FILE = "stock_prices_cache.json"
+THREAD_FILE = "stock_price_thread.json"
 
 
 def load_cached_prices() -> dict:
@@ -33,6 +34,27 @@ def save_prices_to_cache(prices: dict) -> None:
             json.dump(prices, f)
     except Exception as e:
         logger.warning(f"Failed to write cache: {e}")
+
+
+def load_thread_info() -> dict:
+    """Load saved Gmail thread information if available."""
+    if not os.path.exists(THREAD_FILE):
+        return {}
+    try:
+        with open(THREAD_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        logger.warning("Could not load thread info.")
+        return {}
+
+
+def save_thread_info(thread_id: str, message_id: str) -> None:
+    """Persist Gmail thread and message identifiers."""
+    try:
+        with open(THREAD_FILE, "w") as f:
+            json.dump({"thread_id": thread_id, "message_id": message_id}, f)
+    except Exception as e:
+        logger.warning(f"Failed to write thread info: {e}")
 
 
 def _format_prices(previous_prices: dict, current_prices: dict) -> str:
@@ -89,6 +111,7 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
 
     try:
         previous = load_cached_prices()
+        thread_info = load_thread_info()
         resp = get_stock_quotes(tickers)
 
         current = {q["symbol"]: float(q["price"]) for q in resp.data}
@@ -102,10 +125,21 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         message = MIMEText(body, "html", "utf-8")
         message["To"] = recipient
         message["Subject"] = "Stock Price Update"
+        thread_id = thread_info.get("thread_id")
+        message_id = thread_info.get("message_id")
+        if thread_id and message_id:
+            message["In-Reply-To"] = message_id
+            message["References"] = message_id
 
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
-        service.users().messages().send(userId="me", body={"raw": raw}).execute()
+        body_dict = {"raw": raw}
+        if thread_id:
+            body_dict["threadId"] = thread_id
+
+        resp_msg = service.users().messages().send(userId="me", body=body_dict).execute()
+        if resp_msg:
+            save_thread_info(resp_msg.get("threadId", thread_id), resp_msg.get("id", ""))
         logger.info("Sent stock price email")
         return True
 

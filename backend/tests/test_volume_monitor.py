@@ -67,7 +67,7 @@ def test_run_loop_skips_duplicate_alerts(monkeypatch, tmp_path):
     assert len(sent) == 1
 
 
-def test_send_volume_email_subject_contains_window(monkeypatch):
+def test_send_volume_email_subject_includes_timeframe_and_change(monkeypatch):
     sent = {}
 
     class DummyMessages:
@@ -86,7 +86,11 @@ def test_send_volume_email_subject_contains_window(monkeypatch):
         def users(self_inner):
             return DummyUsers()
 
-    monkeypatch.setattr(volume_monitor, "get_authenticated_gmail_service", lambda: DummyService())
-    volume_monitor.send_volume_email("TSLA", 1500, 1000, 5, "to@example.com")
+    monkeypatch.setattr(
+        volume_monitor, "get_authenticated_gmail_service", lambda: DummyService()
+    )
+    volume_monitor.send_volume_email(
+        "TSLA", 1500, 1000, "5m", 2.5, "to@example.com"
+    )
     msg = message_from_bytes(base64.urlsafe_b64decode(sent["raw"].encode()))
-    assert "5m" in msg["Subject"]
+    assert msg["Subject"] == "Volume spike: TSLA | 5m | +2.50%"
