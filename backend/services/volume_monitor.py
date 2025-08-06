@@ -17,7 +17,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "raw_data" / "intraday"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_TICKERS = ["INOD", "MRVL", "TSLA", "PLTR", "NVDA", "GOLD"]
+DEFAULT_TICKERS = [
+    "INOD",
+    "TSLA",
+    "MRVL",
+    "AMD",
+    "NVDA",
+    "PLTR",
+    "DAVE",
+    "HAG.DE",
+    "GC=F",
+]
 
 
 def update_intraday_csv(ticker: str) -> pd.DataFrame:

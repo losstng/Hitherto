@@ -1,0 +1,22 @@
+✅ Endogenous Variables — Subcategorized
+Variable	Category	Rationale
+revenue & net earnings & growth (YoY / QoQ)	Fundamental	Core business performance
+EPS	Fundamental	Earnings efficiency
+D/E	Fundamental	Capital structure health
+FCF	Fundamental	Cash flow strength
+insider buying (Form 4)	Sentiment	Internal conviction, signal to market
+
+🚨 Exogenous Variables — Subcategorized
+Variable	Category	Rationale
+analyst upgrades/downgrades	Sentiment	Sell-side influence on perception
+short interest / short float	Sentiment	Positioning psychology; fear/hedging
+social sentiment	Sentiment	Retail/institutional crowd emotion
+news flow	Sentiment	Narrative driver; tone/pacing of events
+earning surprise	Sentiment	Gap between expectation and reality
+P/E current	Fundamental	Valuation multiple (price + earnings)
+P/B	Fundamental	Asset-based valuation
+avg volume (6m)	Technical	Liquidity behavior over time
+forward P/E	Fundamental	Expectation-weighted valuation
+RSI	Technical	Momentum oscillator (sentiment proxy)
+beta (6m)	Technical	Risk profile vs. market
+moving averages	Technical	Trend-following bias indicator
