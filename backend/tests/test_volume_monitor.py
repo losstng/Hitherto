@@ -90,7 +90,7 @@ def test_send_volume_email_subject_includes_timeframe_and_change(monkeypatch):
         volume_monitor, "get_authenticated_gmail_service", lambda: DummyService()
     )
     volume_monitor.send_volume_email(
-        "TSLA", 1500, 1000, "5m", 2.5, "to@example.com"
+        "TSLA", 1500, 1000, "13:30", 2.5, "to@example.com"
     )
     msg = message_from_bytes(base64.urlsafe_b64decode(sent["raw"].encode()))
-    assert msg["Subject"] == "Volume spike: TSLA | 5m | +2.50%"
+    assert msg["Subject"] == "Volume spike: TSLA | 13:30 | +2.50%"

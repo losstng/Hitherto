@@ -99,7 +99,16 @@ def send_volume_email(
     pct_change: float,
     recipient: str | None = None,
 ) -> bool:
-    """Send an email notification about a volume spike."""
+    """Send an email notification about a volume spike.
+
+    Args:
+        ticker: Stock symbol.
+        volume: Volume of the spike.
+        avg_volume: Average volume for comparison.
+        timeframe: Time of day when the spike occurred (HH:MM).
+        pct_change: Price percentage change during the period.
+        recipient: Optional email recipient.
+    """
     service = get_authenticated_gmail_service()
     if service is None:
         logger.error("No Gmail service available")
@@ -129,7 +138,6 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
     tickers = [t.strip() for t in tickers_env.split(",")] if tickers_env else DEFAULT_TICKERS
     recipient = os.getenv("VOLUME_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
     interval = interval or int(os.getenv("VOLUME_MONITOR_INTERVAL", "300"))
-    window = int(os.getenv("VOLUME_MONITOR_WINDOW", "5"))
 
     alerts = load_alerted_volumes()
 
@@ -138,11 +146,12 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
             try:
                 df = update_5min_csv(t)
                 spike, vol, avg = detect_volume_spike(df)
-                last_ts = df.index[-1].isoformat() if not df.empty else None
+                last_ts = df.index[-1] if not df.empty else None
+                last_ts_iso = last_ts.isoformat() if last_ts is not None else None
                 info = alerts.get(t, {})
                 info["last_volume"] = int(vol) if vol is not None else None
 
-                if spike and info.get("alerted") != last_ts:
+                if spike and info.get("alerted") != last_ts_iso:
                     pct_change = 0.0
                     if {"Open", "Close"}.issubset(df.columns):
                         last_bar = df.iloc[-1]
@@ -151,15 +160,16 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
                         if open_price:
                             pct_change = (close_price - open_price) / open_price * 100
 
+                    timeframe = last_ts.strftime("%H:%M") if last_ts is not None else ""
                     send_volume_email(
                         t,
                         float(vol),
                         float(avg),
-                        f"{window}m",
+                        timeframe,
                         pct_change,
                         recipient,
                     )
-                    info["alerted"] = last_ts
+                    info["alerted"] = last_ts_iso
                 alerts[t] = info
                 save_alerted_volumes(alerts)
             except Exception:
