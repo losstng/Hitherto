@@ -96,9 +96,10 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         resp = get_stock_quotes(tickers)
         body = _format_prices(resp.data)
 
+        recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
         message = MIMEText(body, "html", "utf-8")
-        message["to"] = recipient or "me"
-        message["subject"] = "Stock Price Update"
+        message["To"] = recipient
+        message["Subject"] = "Stock Price Update"
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -116,7 +117,7 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
 def run_price_email_loop(interval: int | None = None) -> None:
     """Continuously send stock price emails every interval."""
     tickers = os.getenv("PRICE_EMAIL_TICKERS")
-    recipient = os.getenv("PRICE_EMAIL_RECIPIENT")
+    recipient = os.getenv("PRICE_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
     interval = interval or int(os.getenv("PRICE_EMAIL_INTERVAL", "300"))
 
     while True:

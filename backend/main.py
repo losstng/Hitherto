@@ -44,6 +44,7 @@ async def lifespan(app: FastAPI):
     # Database setup
     try:
         logger.info("Connecting to DB for schema update...")
+        models.Base.metadata.create_all(bind=engine)
         logger.info("Schema update successful.")
     except Exception as e:
         logger.exception(f"Schema update failed: {e}")

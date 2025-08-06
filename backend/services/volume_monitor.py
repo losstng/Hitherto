@@ -58,9 +58,10 @@ def send_volume_email(ticker: str, volume: float, avg_volume: float, recipient: 
         logger.error("No Gmail service available")
         return False
     body = f"Volume spike detected for {ticker}: {volume:.0f} vs avg {avg_volume:.0f}"
+    recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
     message = MIMEText(body, "plain", "utf-8")
-    message["to"] = recipient or "me"
-    message["subject"] = f"Volume spike for {ticker}"
+    message["To"] = recipient
+    message["Subject"] = f"Volume spike for {ticker}"
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -75,7 +76,7 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
     """Continuously monitor tickers for volume spikes and update CSVs."""
     tickers_env = os.getenv("VOLUME_TICKERS")
     tickers = [t.strip() for t in tickers_env.split(",")] if tickers_env else DEFAULT_TICKERS
-    recipient = os.getenv("VOLUME_EMAIL_RECIPIENT")
+    recipient = os.getenv("VOLUME_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
     interval = interval or int(os.getenv("VOLUME_MONITOR_INTERVAL", "300"))
 
     while True:

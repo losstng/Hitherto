@@ -68,9 +68,10 @@ def send_form4_email(cik: str, filing: Dict[str, str], recipient: Optional[str] 
         f"Accession: {filing['accession_number']}\n"
         f"Filed: {filing['filing_date'].date()}"
     )
+    recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
     message = MIMEText(body, "plain", "utf-8")
-    message["to"] = recipient or "me"
-    message["subject"] = f"Form 4 Alert: {ticker}"
+    message["To"] = recipient
+    message["Subject"] = f"Form 4 Alert: {ticker}"
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -121,7 +122,7 @@ def process_cik(cik: str, db: Session, recipient: Optional[str] = None) -> None:
 def run_sec_filings_monitor_loop(interval: int | None = None) -> None:
     """Continuously poll the SEC API and notify on new Form 4 filings."""
     interval = interval or int(os.getenv("SEC_MONITOR_INTERVAL", "300"))
-    recipient = os.getenv("SEC_EMAIL_RECIPIENT")
+    recipient = os.getenv("SEC_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
     while True:
         with SessionLocal() as db:
             for cik in COMPANIES.keys():
