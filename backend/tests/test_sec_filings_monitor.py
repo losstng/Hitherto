@@ -1,5 +1,7 @@
 import types
 from datetime import datetime
+import base64
+from email import message_from_bytes
 
 import pytest
 from sqlalchemy import create_engine
@@ -60,3 +62,32 @@ def test_process_cik_rolls_back_on_error(monkeypatch, db_session):
     # Restore normal query and ensure session is usable after rollback
     monkeypatch.setattr(db_session, "query", original_query)
     assert db_session.query(SecFiling).count() == 0
+
+
+def test_send_form4_email_subject_contains_date(monkeypatch):
+    sent = {}
+
+    class DummyMessages:
+        def send(self, userId, body):
+            sent["raw"] = body["raw"]
+            class Exec:
+                def execute(self_inner):
+                    return {}
+            return Exec()
+
+    class DummyUsers:
+        def messages(self):
+            return DummyMessages()
+
+    class DummyService:
+        def users(self_inner):
+            return DummyUsers()
+
+    monkeypatch.setattr(monitor, "get_authenticated_gmail_service", lambda: DummyService())
+
+    filing = {"accession_number": "000123", "filing_date": datetime(2024, 5, 1)}
+    monitor.send_form4_email("1835632", filing, "to@example.com")
+
+    raw = sent["raw"]
+    msg = message_from_bytes(base64.urlsafe_b64decode(raw.encode()))
+    assert "2024-05-01" in msg["Subject"]

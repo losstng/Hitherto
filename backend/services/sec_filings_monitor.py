@@ -71,7 +71,9 @@ def send_form4_email(cik: str, filing: Dict[str, str], recipient: Optional[str] 
     recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
     message = MIMEText(body, "plain", "utf-8")
     message["To"] = recipient
-    message["Subject"] = f"Form 4 Alert: {ticker}"
+    message["Subject"] = (
+        f"Form 4 Alert: {ticker} ({filing['filing_date'].date()})"
+    )
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()

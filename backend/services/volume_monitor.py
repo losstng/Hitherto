@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import os
 import time
@@ -18,6 +19,7 @@ DATA_DIR = REPO_ROOT / "raw_data" / "intraday"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_TICKERS = ["INOD", "MRVL", "TSLA", "PLTR", "NVDA", "GC=F"]
+CACHE_FILE = "volume_cache.json"
 
 
 def update_intraday_csv(ticker: str) -> pd.DataFrame:
@@ -51,17 +53,46 @@ def detect_volume_spike(df: pd.DataFrame, window: int = 5, multiplier: float = 1
     return last > multiplier * prev_avg, last, prev_avg
 
 
-def send_volume_email(ticker: str, volume: float, avg_volume: float, recipient: str | None = None) -> bool:
+def load_cached_volumes() -> dict:
+    """Load cached volume totals from local file."""
+    if not os.path.exists(CACHE_FILE):
+        return {}
+    try:
+        with open(CACHE_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        logger.warning("Could not load volume cache.")
+        return {}
+
+
+def save_volumes_to_cache(volumes: dict) -> None:
+    """Persist latest volume totals to cache file."""
+    try:
+        with open(CACHE_FILE, "w") as f:
+            json.dump(volumes, f)
+    except Exception as e:
+        logger.warning(f"Failed to write volume cache: {e}")
+
+
+def send_volume_email(
+    ticker: str,
+    volume: float,
+    avg_volume: float,
+    window: int,
+    recipient: str | None = None,
+) -> bool:
     """Send an email notification about a volume spike."""
     service = get_authenticated_gmail_service()
     if service is None:
         logger.error("No Gmail service available")
         return False
-    body = f"Volume spike detected for {ticker}: {volume:.0f} vs avg {avg_volume:.0f}"
+    body = (
+        f"Volume spike detected for {ticker}: {volume:.0f} vs avg {avg_volume:.0f}"
+    )
     recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
     message = MIMEText(body, "plain", "utf-8")
     message["To"] = recipient
-    message["Subject"] = f"Volume spike for {ticker}"
+    message["Subject"] = f"Volume spike for {ticker} over {window}m"
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -78,14 +109,19 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
     tickers = [t.strip() for t in tickers_env.split(",")] if tickers_env else DEFAULT_TICKERS
     recipient = os.getenv("VOLUME_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
     interval = interval or int(os.getenv("VOLUME_MONITOR_INTERVAL", "300"))
+    window = int(os.getenv("VOLUME_MONITOR_WINDOW", "5"))
+
+    volumes_cache = load_cached_volumes()
 
     while True:
         for t in tickers:
             try:
                 df = update_intraday_csv(t)
-                spike, vol, avg = detect_volume_spike(df)
+                spike, vol, avg = detect_volume_spike(df, window=window)
+                volumes_cache[t] = vol
+                save_volumes_to_cache(volumes_cache)
                 if spike:
-                    send_volume_email(t, vol, avg, recipient)
+                    send_volume_email(t, vol, avg, window, recipient)
             except Exception:
                 logger.exception("Error processing ticker %s", t)
         time.sleep(interval)
