@@ -4,7 +4,6 @@ import logging
 import os
 import time
 from email.mime.text import MIMEText
-from typing import Iterable
 
 from googleapiclient.errors import HttpError
 
@@ -36,12 +35,8 @@ def save_prices_to_cache(prices: dict) -> None:
         logger.warning(f"Failed to write cache: {e}")
 
 
-def _format_prices(quotes: Iterable[dict]) -> str:
+def _format_prices(previous_prices: dict, current_prices: dict) -> str:
     """Return an HTML table with color-coded price changes."""
-    previous_prices = load_cached_prices()
-    current_prices = {q["symbol"]: float(q["price"]) for q in quotes}
-    save_prices_to_cache(current_prices)
-
     def get_color_style(percent_change: float) -> str:
         if percent_change > 1:
             return "color: darkgreen;"
@@ -93,12 +88,21 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         return False
 
     try:
+        previous = load_cached_prices()
         resp = get_stock_quotes(tickers)
-        body = _format_prices(resp.data)
 
-        message = MIMEText(body, "html")
-        message["to"] = recipient or "me"
-        message["subject"] = "Stock Price Update"
+        current = {q["symbol"]: float(q["price"]) for q in resp.data}
+        if current == previous:
+            logger.info("Prices unchanged; skipping email")
+            return False
+        save_prices_to_cache(current)
+        body = _format_prices(previous, current)
+
+        recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
+        message = MIMEText(body, "html", "utf-8")
+        message["To"] = recipient
+        message["Subject"] = "Stock Price Update"
+
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -116,7 +120,7 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
 def run_price_email_loop(interval: int | None = None) -> None:
     """Continuously send stock price emails every interval."""
     tickers = os.getenv("PRICE_EMAIL_TICKERS")
-    recipient = os.getenv("PRICE_EMAIL_RECIPIENT")
+    recipient = os.getenv("PRICE_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
     interval = interval or int(os.getenv("PRICE_EMAIL_INTERVAL", "300"))
 
     while True:
