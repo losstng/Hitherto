@@ -9,6 +9,8 @@ from sqlalchemy import text
 
 from .services.email_service import get_authenticated_gmail_service
 from .services.price_email import run_price_email_loop
+from .services.volume_monitor import run_volume_monitor_loop
+from .services.sec_filings_monitor import run_sec_filings_monitor_loop
 from .database import engine
 from . import models
 from .routers import ingest, query, stocks  # Adjust if needed
@@ -34,8 +36,10 @@ async def lifespan(app: FastAPI):
     else:
         logger.error("Failed to authenticate Gmail service on startup.")
 
-    # Start price email notifications in a background thread
+    # Start price and volume notifications in background threads
     threading.Thread(target=run_price_email_loop, daemon=True).start()
+    threading.Thread(target=run_volume_monitor_loop, daemon=True).start()
+    threading.Thread(target=run_sec_filings_monitor_loop, daemon=True).start()
 
     # Database setup
     try:

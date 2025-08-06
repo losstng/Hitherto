@@ -18,3 +18,17 @@ class Newsletter(Base):
     created_at = Column(DateTime, server_default=func.now())
     vectorized = Column(Boolean, default=False)
 
+
+class SecFiling(Base):
+    """Model storing metadata about fetched SEC filings."""
+
+    __tablename__ = "sec_filing"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cik = Column(String, index=True, nullable=False)
+    accession_number = Column(String, unique=True, nullable=False)
+    form_type = Column(String, nullable=False)
+    filed_at = Column(DateTime, nullable=False)
+    data = Column(JSON, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
