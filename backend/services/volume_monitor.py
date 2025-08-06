@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "raw_data" / "intraday"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_TICKERS = ["INOD", "MRVL", "TSLA", "PLTR", "NVDA", "GOLD"]
+DEFAULT_TICKERS = ["INOD", "MRVL", "TSLA", "PLTR", "NVDA", "GC=F"]
 
 
 def update_intraday_csv(ticker: str) -> pd.DataFrame:
@@ -58,9 +58,9 @@ def send_volume_email(ticker: str, volume: float, avg_volume: float, recipient: 
         logger.error("No Gmail service available")
         return False
     body = f"Volume spike detected for {ticker}: {volume:.0f} vs avg {avg_volume:.0f}"
-    message = MIMEText(body)
+    message = MIMEText(body, "plain", "utf-8")
     message["to"] = recipient or "me"
-    message["subject"] = f"\ud83d\udcc8 Volume spike for {ticker}"
+    message["subject"] = f"Volume spike for {ticker}"
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()

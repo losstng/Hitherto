@@ -96,9 +96,9 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         resp = get_stock_quotes(tickers)
         body = _format_prices(resp.data)
 
-        message = MIMEText(body, "html")
+        message = MIMEText(body, "html", "utf-8")
         message["to"] = recipient or "me"
-        message["subject"] = "📈 Stock Price Update"
+        message["subject"] = "Stock Price Update"
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
         service.users().messages().send(userId="me", body={"raw": raw}).execute()

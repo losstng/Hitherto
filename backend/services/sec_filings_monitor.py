@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from typing import Dict, Optional
 
 import requests
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .email_service import get_authenticated_gmail_service
@@ -67,7 +68,7 @@ def send_form4_email(cik: str, filing: Dict[str, str], recipient: Optional[str] 
         f"Accession: {filing['accession_number']}\n"
         f"Filed: {filing['filing_date'].date()}"
     )
-    message = MIMEText(body)
+    message = MIMEText(body, "plain", "utf-8")
     message["to"] = recipient or "me"
     message["subject"] = f"Form 4 Alert: {ticker}"
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
@@ -85,7 +86,16 @@ def process_cik(cik: str, db: Session, recipient: Optional[str] = None) -> None:
     filing = fetch_latest_form4(cik)
     if not filing:
         return
-    exists = db.query(SecFiling).filter_by(accession_number=filing["accession_number"]).first()
+    try:
+        exists = (
+            db.query(SecFiling)
+            .filter_by(accession_number=filing["accession_number"])
+            .first()
+        )
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error("Database error while checking accession number for %s: %s", cik, exc)
+        return
     if exists:
         return
     record = SecFiling(
@@ -93,10 +103,18 @@ def process_cik(cik: str, db: Session, recipient: Optional[str] = None) -> None:
         accession_number=filing["accession_number"],
         form_type="4",
         filed_at=filing["filing_date"],
-        data={"accession_number": filing["accession_number"], "filing_date": filing["filing_date"].isoformat()},
+        data={
+            "accession_number": filing["accession_number"],
+            "filing_date": filing["filing_date"].isoformat(),
+        },
     )
-    db.add(record)
-    db.commit()
+    try:
+        db.add(record)
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error("Database error while storing filing for %s: %s", cik, exc)
+        return
     send_form4_email(cik, filing, recipient)
 
 
