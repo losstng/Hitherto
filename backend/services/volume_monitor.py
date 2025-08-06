@@ -67,11 +67,26 @@ def load_alerted_volumes() -> dict:
         return {}
 
 
+def _to_native(value):
+    """Recursively convert numpy/pandas types to native Python types."""
+    if isinstance(value, dict):
+        return {k: _to_native(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_native(v) for v in value]
+    if hasattr(value, "item"):
+        try:
+            return value.item()
+        except Exception:
+            return value
+    return value
+
+
 def save_alerted_volumes(alerts: dict) -> None:
     """Persist alert information to disk."""
     try:
+        serializable = _to_native(alerts)
         with open(ALERT_FILE, "w") as f:
-            json.dump(alerts, f)
+            json.dump(serializable, f)
     except Exception as e:
         logger.warning(f"Failed to write alert file: {e}")
 
@@ -80,10 +95,20 @@ def send_volume_email(
     ticker: str,
     volume: float,
     avg_volume: float,
-    window: int,
+    timeframe: str,
+    pct_change: float,
     recipient: str | None = None,
 ) -> bool:
-    """Send an email notification about a volume spike."""
+    """Send an email notification about a volume spike.
+
+    Args:
+        ticker: Stock symbol.
+        volume: Volume of the spike.
+        avg_volume: Average volume for comparison.
+        timeframe: Time of day when the spike occurred (HH:MM).
+        pct_change: Price percentage change during the period.
+        recipient: Optional email recipient.
+    """
     service = get_authenticated_gmail_service()
     if service is None:
         logger.error("No Gmail service available")
@@ -94,7 +119,9 @@ def send_volume_email(
     recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
     message = MIMEText(body, "plain", "utf-8")
     message["To"] = recipient
-    message["Subject"] = f"Volume spike for {ticker} over {window}m"
+    message["Subject"] = (
+        f"Volume spike: {ticker} | {timeframe} | {pct_change:+.2f}%"
+    )
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -111,7 +138,6 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
     tickers = [t.strip() for t in tickers_env.split(",")] if tickers_env else DEFAULT_TICKERS
     recipient = os.getenv("VOLUME_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
     interval = interval or int(os.getenv("VOLUME_MONITOR_INTERVAL", "300"))
-    window = int(os.getenv("VOLUME_MONITOR_WINDOW", "5"))
 
     alerts = load_alerted_volumes()
 
@@ -120,12 +146,30 @@ def run_volume_monitor_loop(interval: int | None = None) -> None:
             try:
                 df = update_5min_csv(t)
                 spike, vol, avg = detect_volume_spike(df)
-                last_ts = df.index[-1].isoformat() if not df.empty else None
+                last_ts = df.index[-1] if not df.empty else None
+                last_ts_iso = last_ts.isoformat() if last_ts is not None else None
                 info = alerts.get(t, {})
-                info["last_volume"] = vol
-                if spike and info.get("alerted") != last_ts:
-                    send_volume_email(t, vol, avg, window, recipient)
-                    info["alerted"] = last_ts
+                info["last_volume"] = int(vol) if vol is not None else None
+
+                if spike and info.get("alerted") != last_ts_iso:
+                    pct_change = 0.0
+                    if {"Open", "Close"}.issubset(df.columns):
+                        last_bar = df.iloc[-1]
+                        open_price = last_bar["Open"]
+                        close_price = last_bar["Close"]
+                        if open_price:
+                            pct_change = (close_price - open_price) / open_price * 100
+
+                    timeframe = last_ts.strftime("%H:%M") if last_ts is not None else ""
+                    send_volume_email(
+                        t,
+                        float(vol),
+                        float(avg),
+                        timeframe,
+                        pct_change,
+                        recipient,
+                    )
+                    info["alerted"] = last_ts_iso
                 alerts[t] = info
                 save_alerted_volumes(alerts)
             except Exception:
