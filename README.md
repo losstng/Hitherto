@@ -33,6 +33,17 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
 
 Visit <http://localhost:3000> to use the app.
 
+### Codex lightweight setup
+
+For workflows that only require the pieces used by Codex, install the trimmed
+dependency lists instead of the full ones:
+
+- Backend: `pip install -r codex_requirements.txt`
+- Frontend: use `frontend/codex_package.json` when installing npm packages.
+
+These files omit machine learning, statistics and notebook dependencies for a
+lighter environment.
+
 ## Repository layout
 
 - **backend/** – FastAPI service with routers under `routers/` and helpers in `services/`.
