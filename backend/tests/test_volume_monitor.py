@@ -37,6 +37,7 @@ def test_run_loop_skips_duplicate_alerts(monkeypatch, tmp_path):
     alert_file = tmp_path / "alerts.json"
     monkeypatch.setattr(volume_monitor, "ALERT_FILE", alert_file)
     monkeypatch.setattr(volume_monitor, "DEFAULT_TICKERS", ["TSLA"])
+    monkeypatch.setattr(volume_monitor, "VOLUME_TICKERS", None)
 
     df = pd.DataFrame(
         {"Volume": [100, 100, 100, 100, 300]},
