@@ -1,0 +1,33 @@
+✅ 1. Fundamental Analysis Variables (mostly exogenous)
+Variable	Source Type	Data Sources / Methods	Notes
+Revenue, Net Earnings, YoY/QoQ Growth	API	Financial statement API (e.g., Financial Modeling Prep, Alpha Vantage, Yahoo Finance, Polygon.io)	Quarterly updates
+EPS	API	Same as above	Use both GAAP and adjusted EPS
+P/E (current)	Derived	Price / EPS from latest data	Pull price + EPS
+Forward P/E	Analyst Consensus	Zacks, Finviz, Yahoo, Refinitiv	Forecast-based
+P/B	Derived	Price / Book Value	Book Value from balance sheet
+D/E	API	Derived from balance sheet	Equity vs. total liabilities
+FCF	API	From cash flow statement (FinModPrep, Alpha Vantage)	Use TTM values
+Insider Buying (Form 4)	SEC Feed	EDGAR API, Finviz, OpenInsider	Extract using form type "4"
+Earning Surprise	Derived	Reported EPS - Expected EPS	Often available directly from APIs like Yahoo or Seeking Alpha
+
+📈 2. Technical Analysis Variables
+Variable	Source Type	Data Sources / Methods	Notes
+RSI (14-day)	Calculated	From price history (via Alpha Vantage, Yahoo, IEX Cloud)	Use TA libraries (e.g. TA-Lib, btalib, pandas-ta)
+Moving Averages (20, 50, 200)	Calculated	From daily OHLCV data	Same as above
+Beta (6m)	Calculated	Use price history vs. SPY or S&P index	Use rolling covariance / variance
+Avg Volume (6m)	Calculated	From daily volume	Smooth average over 126 trading days
+Short Interest / Short Float	External	FINRA, NASDAQ, Ortex, Yahoo, Fintel.io	Update biweekly or use proxies
+
+🧠 3. Sentiment Analysis Variables (excluding news headlines)
+Variable	Source Type	Data Sources / Methods	Notes
+Analyst Upgrades/Downgrades	Scraped/API	Finviz, MarketBeat, Zacks, Yahoo Analyst Trends	Track trends, not just latest
+Social Sentiment	NLP / API	Reddit (WSB), StockTwits, X/Twitter using LLM/NLP models	LLM needed for tone context
+Short Interest / Float	Already listed above	Also sentiment-driven — include in both categories	
+Insider Buying (Form 4)	Already listed above	Also a sentiment signal — dual-categorize	
+Earnings Surprise	Already listed above	Dual signal: sentiment & fundamental	
+
+🧠 Pipeline Strategy: Collection Frequency
+Frequency	Variables
+Daily	RSI, MA, Volume, Beta, Social Sentiment, Analyst Ratings, Price
+Weekly	Insider buying, short interest, upgrades/downgrades
+Quarterly	EPS, Revenue, FCF, Earning Surprise, D/E, P/E, Forward P/E, P/B
