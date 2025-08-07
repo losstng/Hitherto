@@ -25,6 +25,7 @@ from ..env import (
     VOLUME_EMAIL_RECIPIENT,
     VOLUME_MONITOR_INTERVAL,
     VOLUME_TICKERS,
+    VOLUME_THREAD_FILE,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ DATA_DIR = REPO_ROOT / VOLUME_DATA_DIR
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 ALERT_FILE = DATA_DIR / VOLUME_ALERT_FILE
+THREAD_FILE = REPO_ROOT / VOLUME_THREAD_FILE
 
 
 def update_5min_csv(ticker: str) -> pd.DataFrame:
@@ -106,6 +108,27 @@ def save_alerted_volumes(alerts: dict) -> None:
         logger.warning(f"Failed to write alert file: {e}")
 
 
+def load_thread_info() -> dict:
+    """Load saved Gmail thread info for volume alerts."""
+    if not THREAD_FILE.exists():
+        return {}
+    try:
+        with open(THREAD_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        logger.warning("Could not load volume thread file.")
+        return {}
+
+
+def save_thread_info(info: dict) -> None:
+    """Persist per-ticker thread identifiers."""
+    try:
+        with open(THREAD_FILE, "w") as f:
+            json.dump(info, f)
+    except Exception as e:
+        logger.warning(f"Failed to write volume thread file: {e}")
+
+
 def send_volume_email(
     ticker: str,
     volume: float,
@@ -133,9 +156,28 @@ def send_volume_email(
     message = MIMEText(body, "plain", "utf-8")
     message["To"] = recipient
     message["Subject"] = f"Volume spike: {ticker} | {timeframe} | {pct_change:+.2f}%"
+    threads = load_thread_info()
+    thread = threads.get(ticker, {})
+    thread_id = thread.get("thread_id")
+    message_id = thread.get("message_id")
+    if thread_id and message_id:
+        message["In-Reply-To"] = message_id
+        message["References"] = message_id
+
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    body_dict = {"raw": raw}
+    if thread_id:
+        body_dict["threadId"] = thread_id
     try:
-        service.users().messages().send(userId="me", body={"raw": raw}).execute()
+        resp_msg = (
+            service.users().messages().send(userId="me", body=body_dict).execute()
+        )
+        if resp_msg:
+            threads[ticker] = {
+                "thread_id": resp_msg.get("threadId", thread_id),
+                "message_id": resp_msg.get("id", ""),
+            }
+            save_thread_info(threads)
         logger.info("Sent volume spike email for %s", ticker)
         return True
     except Exception:
