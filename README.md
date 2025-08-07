@@ -17,7 +17,7 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
    cd frontend && npm install && cd ..
    ```
 4. Provide configuration files:
-   - `.env` defines `DATABASE_URL`, `GMAIL_SCOPE`, and other OAuth details.
+   - `.env` defines all backend settings and is loaded by `backend/env.py`.
    - `credentials.json` holds the Google OAuth client information.
    - `token.json` will be created after completing the OAuth flow.
 5. Start the API server:

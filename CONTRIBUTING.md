@@ -40,6 +40,17 @@ def fetch_user(id: int) -> User:
     """
 ```
 
+### Configuration
+
+- Store backend settings in `.env`.
+- Import values from `backend.env` rather than using `os.getenv` directly.
+
+```python
+from backend import env
+
+db_url = env.DATABASE_URL
+```
+
 ### API conventions
 
 - FastAPI routers reside in `backend/routers` and return `ApiResponse` objects.

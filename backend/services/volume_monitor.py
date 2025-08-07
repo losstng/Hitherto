@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-import os
 import time
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
@@ -13,17 +12,28 @@ import yfinance as yf
 try:  # pragma: no cover - fallback if email deps missing
     from .email_service import get_authenticated_gmail_service
 except Exception:  # pragma: no cover
+
     def get_authenticated_gmail_service():
         return None
+
+
+from ..env import (
+    DEFAULT_TICKERS,
+    EMAIL_RECIPIENT,
+    VOLUME_ALERT_FILE,
+    VOLUME_DATA_DIR,
+    VOLUME_EMAIL_RECIPIENT,
+    VOLUME_MONITOR_INTERVAL,
+    VOLUME_TICKERS,
+)
 
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = REPO_ROOT / "raw_data" / "5_min"
+DATA_DIR = REPO_ROOT / VOLUME_DATA_DIR
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_TICKERS = ["INOD", "MRVL", "TSLA", "PLTR", "NVDA", "GC=F"]
-ALERT_FILE = DATA_DIR / "volume_alerts.json"
+ALERT_FILE = DATA_DIR / VOLUME_ALERT_FILE
 
 
 def update_5min_csv(ticker: str) -> pd.DataFrame:
@@ -34,7 +44,11 @@ def update_5min_csv(ticker: str) -> pd.DataFrame:
     else:
         old_df = pd.DataFrame()
     last = old_df.index.max() if not old_df.empty else None
-    start = last + timedelta(minutes=5) if last is not None else datetime.utcnow() - timedelta(days=5)
+    start = (
+        last + timedelta(minutes=5)
+        if last is not None
+        else datetime.utcnow() - timedelta(days=5)
+    )
     df = yf.Ticker(ticker).history(start=start, interval="5m")
     if df.empty:
         return old_df
@@ -54,6 +68,7 @@ def detect_volume_spike(df: pd.DataFrame, multiplier: float = 1.75):
     if prev_avg == 0 or pd.isna(prev_avg):
         return False, last, prev_avg
     return last > multiplier * prev_avg, last, prev_avg
+
 
 def load_alerted_volumes() -> dict:
     """Load last alerted timestamps from file."""
@@ -113,15 +128,11 @@ def send_volume_email(
     if service is None:
         logger.error("No Gmail service available")
         return False
-    body = (
-        f"Volume spike detected for {ticker}: {volume:.0f} vs avg {avg_volume:.0f}"
-    )
-    recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
+    body = f"Volume spike detected for {ticker}: {volume:.0f} vs avg {avg_volume:.0f}"
+    recipient = recipient or EMAIL_RECIPIENT
     message = MIMEText(body, "plain", "utf-8")
     message["To"] = recipient
-    message["Subject"] = (
-        f"Volume spike: {ticker} | {timeframe} | {pct_change:+.2f}%"
-    )
+    message["Subject"] = f"Volume spike: {ticker} | {timeframe} | {pct_change:+.2f}%"
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -134,10 +145,9 @@ def send_volume_email(
 
 def run_volume_monitor_loop(interval: int | None = None) -> None:
     """Continuously monitor tickers for volume spikes and update CSVs."""
-    tickers_env = os.getenv("VOLUME_TICKERS")
-    tickers = [t.strip() for t in tickers_env.split(",")] if tickers_env else DEFAULT_TICKERS
-    recipient = os.getenv("VOLUME_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
-    interval = interval or int(os.getenv("VOLUME_MONITOR_INTERVAL", "300"))
+    tickers = VOLUME_TICKERS or DEFAULT_TICKERS
+    recipient = VOLUME_EMAIL_RECIPIENT or EMAIL_RECIPIENT
+    interval = interval or VOLUME_MONITOR_INTERVAL
 
     alerts = load_alerted_volumes()
 

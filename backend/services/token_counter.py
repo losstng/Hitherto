@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import logging
-import os
 from typing import Optional
 
-from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
+from ..env import MODEL_IN_USE
 from ..models import Newsletter
 
-load_dotenv()
-
-MODEL = os.getenv("MODEL_IN_USE", "gpt-3.5-turbo")
+MODEL = MODEL_IN_USE
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +51,5 @@ def compute_token_count_simple(
 
     except Exception as e:  # pragma: no cover - external issues
         db.rollback()
-        logger.exception(
-            "Failed to compute token count for %s: %s", message_id, e
-        )
+        logger.exception("Failed to compute token count for %s: %s", message_id, e)
         return None

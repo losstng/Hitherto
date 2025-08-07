@@ -1,11 +1,12 @@
+import logging
+from datetime import datetime
+
 from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
 
-from datetime import datetime
-import logging
-import os
-
+from ..env import EMBEDDING_DEVICE, FAISS_STORE_DIR
 from .utils import load_embedding_model
+
 
 def retrieve_context(
     query: str,
@@ -14,12 +15,11 @@ def retrieve_context(
     end_date: str | None = None,
     k: int = 5,
     message_ids: list[str] | None = None,
-    persist_base_dir: str = "db/faiss_store",
+    persist_base_dir: str = FAISS_STORE_DIR,
 ) -> list[Document]:
     """Retrieve relevant chunks filtered by category and optional date range."""
     try:
-        device = os.environ.get("EMBEDDING_DEVICE", "cpu")
-        embedding_model = load_embedding_model(device)
+        embedding_model = load_embedding_model(EMBEDDING_DEVICE)
         if embedding_model is None:
             return []
 
@@ -43,7 +43,9 @@ def retrieve_context(
         if message_ids:
             search_filter["message_id"] = {"$in": message_ids}
 
-        raw_docs = vector_db.similarity_search(query, k=50, filter=search_filter or None)
+        raw_docs = vector_db.similarity_search(
+            query, k=50, filter=search_filter or None
+        )
 
         filtered: list[Document] = []
         for d in raw_docs:
@@ -72,5 +74,5 @@ def retrieve_context(
         return filtered
 
     except Exception as e:
-        logging.exception(f"Failed to retrieve context for query: {query}")        
+        logging.exception(f"Failed to retrieve context for query: {query}")
         return []

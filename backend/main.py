@@ -1,27 +1,29 @@
-import os
 import logging
 import threading
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
-from contextlib import asynccontextmanager
 from sqlalchemy import text
 
+from . import models
+from .database import engine
+from .env import CORS_ALLOW_ORIGINS, FASTAPI_PORT, GMAIL_SCOPE, LOG_LEVEL
+from .routers import ingest, query, stocks  # Adjust if needed
 from .services.email_service import get_authenticated_gmail_service
 from .services.price_email import run_price_email_loop
-from .services.volume_monitor import run_volume_monitor_loop
 from .services.sec_filings_monitor import run_sec_filings_monitor_loop
-from .database import engine
-from . import models
-from .routers import ingest, query, stocks  # Adjust if needed
+from .services.volume_monitor import run_volume_monitor_loop
 
 # ----- Logging Setup -----
-logging.basicConfig(level=logging.DEBUG, force=True)
+logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.DEBUG), force=True)
 logger = logging.getLogger(__name__)
 
 # ----- Gmail Scope and Service Handle -----
-SCOPES = [os.getenv("GMAIL_SCOPE")]
+SCOPES = [GMAIL_SCOPE]
 gmail_service = None  # Global handle
+
 
 # ----- Lifespan Context Manager -----
 @asynccontextmanager
@@ -54,13 +56,14 @@ async def lifespan(app: FastAPI):
     yield
     # Optional: any shutdown logic here
 
+
 # ----- FastAPI App -----
 app = FastAPI(lifespan=lifespan)
 
 # ----- Middleware -----
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Consider restricting for production
+    allow_origins=CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,10 +74,12 @@ app.include_router(ingest.router, prefix="/ingest", tags=["Ingest"])
 app.include_router(query.router, tags=["Query"])
 app.include_router(stocks.router, prefix="/stocks", tags=["Stocks"])
 
+
 # ----- Sanity Check Route -----
 @app.get("/")
 def root():
     return {"status": "ok"}
+
 
 # ----- Log Routes -----
 for route in app.routes:
@@ -84,5 +89,10 @@ for route in app.routes:
 # ----- Uvicorn Entry Point -----
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("FASTAPI_PORT", os.getenv("PORT", 8000)))
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)
+
+    uvicorn.run(
+        "backend.main:app",
+        host="0.0.0.0",
+        port=FASTAPI_PORT,
+        reload=True,
+    )

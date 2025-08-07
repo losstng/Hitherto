@@ -1,6 +1,5 @@
 import base64
 import logging
-import os
 import time
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -10,9 +9,15 @@ import requests
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .email_service import get_authenticated_gmail_service
 from ..database import SessionLocal
+from ..env import (
+    EMAIL_RECIPIENT,
+    SEC_EMAIL_RECIPIENT,
+    SEC_MONITOR_INTERVAL,
+    SEC_USER_AGENT,
+)
 from ..models import SecFiling
+from .email_service import get_authenticated_gmail_service
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +33,7 @@ COMPANIES: Dict[str, Dict[str, str]] = {
     "1326801": {"ticker": "META", "title": "Meta Platforms, Inc."},
 }
 
-SEC_HEADERS = {
-    "User-Agent": os.getenv("SEC_USER_AGENT", "HithertoApp/0.1 (hello@example.com)")
-}
+SEC_HEADERS = {"User-Agent": SEC_USER_AGENT}
 
 
 def fetch_latest_form4(cik: str) -> Optional[Dict[str, str]]:
@@ -54,7 +57,9 @@ def fetch_latest_form4(cik: str) -> Optional[Dict[str, str]]:
     return None
 
 
-def send_form4_email(cik: str, filing: Dict[str, str], recipient: Optional[str] = None) -> bool:
+def send_form4_email(
+    cik: str, filing: Dict[str, str], recipient: Optional[str] = None
+) -> bool:
     """Send an email notification about a new Form 4 filing."""
     service = get_authenticated_gmail_service()
     if service is None:
@@ -68,12 +73,10 @@ def send_form4_email(cik: str, filing: Dict[str, str], recipient: Optional[str] 
         f"Accession: {filing['accession_number']}\n"
         f"Filed: {filing['filing_date'].date()}"
     )
-    recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
+    recipient = recipient or EMAIL_RECIPIENT
     message = MIMEText(body, "plain", "utf-8")
     message["To"] = recipient
-    message["Subject"] = (
-        f"Form 4 Alert: {ticker} ({filing['filing_date'].date()})"
-    )
+    message["Subject"] = f"Form 4 Alert: {ticker} ({filing['filing_date'].date()})"
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     try:
         service.users().messages().send(userId="me", body={"raw": raw}).execute()
@@ -97,7 +100,9 @@ def process_cik(cik: str, db: Session, recipient: Optional[str] = None) -> None:
         )
     except SQLAlchemyError as exc:
         db.rollback()
-        logger.error("Database error while checking accession number for %s: %s", cik, exc)
+        logger.error(
+            "Database error while checking accession number for %s: %s", cik, exc
+        )
         return
     if exists:
         return
@@ -123,8 +128,8 @@ def process_cik(cik: str, db: Session, recipient: Optional[str] = None) -> None:
 
 def run_sec_filings_monitor_loop(interval: int | None = None) -> None:
     """Continuously poll the SEC API and notify on new Form 4 filings."""
-    interval = interval or int(os.getenv("SEC_MONITOR_INTERVAL", "300"))
-    recipient = os.getenv("SEC_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
+    interval = interval or SEC_MONITOR_INTERVAL
+    recipient = SEC_EMAIL_RECIPIENT or EMAIL_RECIPIENT
     while True:
         with SessionLocal() as db:
             for cik in COMPANIES.keys():
