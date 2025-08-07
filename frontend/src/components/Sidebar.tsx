@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import StockPrices from "./StockPrices";
+import { StockPrices } from ".";
 
 export default function Sidebar() {
   const pathname = usePathname();

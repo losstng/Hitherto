@@ -1,6 +1,6 @@
 // src/components/ReloadButton.tsx
 "use client";
-import { useReload } from "@/hooks/useIngest";
+import { useReload } from "@/hooks";
 
 export default function ReloadButton() {
   const reload = useReload();

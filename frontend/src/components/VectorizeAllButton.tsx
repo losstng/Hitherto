@@ -1,5 +1,5 @@
 "use client";
-import { useVectorizeAll } from "@/hooks/useIngest";
+import { useVectorizeAll } from "@/hooks";
 
 export default function VectorizeAllButton() {
   const vectorizeAll = useVectorizeAll();

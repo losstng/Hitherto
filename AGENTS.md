@@ -8,13 +8,14 @@ This document explains the layout of the project and the quickest way for automa
   - `main.py` bootstraps the server and registers API routes from `routers/`.
   - `routers/` exposes endpoints for newsletter ingestion (`ingest.py`), querying (`query.py`) and stock data (`stocks.py`).
   - `services/` implements Gmail ingestion, text chunking, token counting and vector embedding. Logging is enabled throughout these modules.
+  - `env.py` loads `.env` and provides configuration values to other modules.
   - `models.py`, `database.py` and `schemas.py` define the ORM models and Pydantic response classes.
   - `tests/` holds unit tests (run with `pytest -q`).
   - `llm/` and `redis.py` are placeholders for future extensions.
 
 - **frontend/** – Next.js application using the App Router.
-  - `components/` contains UI elements such as the newsletter table.
-  - `app/actions/` and `hooks/` wrap API requests and React Query helpers.
+  - `components/` contains UI elements such as the newsletter table and re-exports them via `index.ts` so they can be imported from `@/components`.
+  - `app/actions/` and `hooks/` wrap API requests and React Query helpers. Hooks are re-exported through `index.ts` and imported from `@/hooks`.
 
 - **debug_tools/** – Helper scripts for manual Gmail API debugging.
 - **scripts/** – Utility shell scripts such as `clean_pycache.sh`.
@@ -37,7 +38,7 @@ This document explains the layout of the project and the quickest way for automa
    cd frontend && npm install && cd ..
    ```
 4. Ensure the following configuration files exist:
-   - `.env` with variables like `DATABASE_URL`, `GMAIL_SCOPE`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `REDIRECT_URI`.
+   - `.env` listing all backend variables read by `backend/env.py`.
    - `credentials.json` downloaded from Google Cloud for OAuth.
    - `token.json` will be generated automatically after completing the OAuth flow.
 5. Run the test suite to confirm the environment:

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { format, parseISO } from "date-fns";
-import { useChatContext } from "./ChatProvider";
+import { useChatContext } from ".";
 import "@/styles/daypicker.css";
 
 export default function DateRangeFilter({

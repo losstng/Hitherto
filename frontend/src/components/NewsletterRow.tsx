@@ -2,7 +2,7 @@
 "use client";
 import { useExtract, useChunk, useEmbed, useTokenize } from "@/app/actions/useProcess";
 import { NewsletterLite } from "@/lib/types";
-import { useChatContext } from "./ChatProvider";
+import { useChatContext } from ".";
 import { api } from "@/lib/api";
 import { useState } from "react";
 

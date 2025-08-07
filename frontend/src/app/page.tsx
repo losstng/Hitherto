@@ -1,14 +1,16 @@
 "use client";
 import { useState } from "react";
-import ReloadButton from "@/components/ReloadButton";
-import ExtractAllButton from "@/components/ExtractAllButton";
-import VectorizeAllButton from "@/components/VectorizeAllButton";
-import CategorySelect from "@/components/CategorySelect";
-import DateRangeFilter from "@/components/DateRangeFilter";
-import NewsletterTable from "@/components/NewsletterTable";
-import Sidebar from "@/components/Sidebar";
-import ChatPanel from "@/components/ChatPanel";
-import { useFilters } from "@/hooks/useIngest";
+import {
+  ReloadButton,
+  ExtractAllButton,
+  VectorizeAllButton,
+  CategorySelect,
+  DateRangeFilter,
+  NewsletterTable,
+  Sidebar,
+  ChatPanel,
+} from "@/components";
+import { useFilters } from "@/hooks";
 
 export default function EmailsPage() {
   const [cat, setCat] = useState("");

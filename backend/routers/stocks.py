@@ -13,9 +13,11 @@ except Exception:  # pragma: no cover - allow running without FastAPI
         return default
 
 
-from ..schemas import ApiResponse
-import logging
 import importlib
+import logging
+
+from ..env import STOCK_DEFAULT_TICKERS as DEFAULT_TICKERS
+from ..schemas import ApiResponse
 
 try:  # pragma: no cover - optional dependency
     import yfinance as yf
@@ -24,19 +26,6 @@ except Exception:
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-DEFAULT_TICKERS = [
-    "INOD",
-    "TSLA",
-    "MRVL",
-    "AMD",
-    "NVDA",
-    "PLTR",
-    "DAVE",
-    "HAG.DE",
-    "GC=F",
-    "LMT",
-]
 
 
 @router.get("/quotes", response_model=ApiResponse)

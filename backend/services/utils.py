@@ -1,6 +1,6 @@
 from __future__ import annotations
+
 import logging
-import os
 import re
 
 try:
@@ -11,12 +11,14 @@ except Exception:  # pragma: no cover - optional dependency may be missing
 
 def safe_filename(name: str) -> str:
     """Sanitize a string to be safe for use as a filename on Windows."""
-    return re.sub(r'[<>:"/\\|?*]', '_', name)
+    return re.sub(r'[<>:"/\\|?*]', "_", name)
 
 
 def load_embedding_model(device: str) -> HuggingFaceEmbeddings | None:
     """Return a sentence transformer embedding model or ``None`` on failure."""
-    cache_dir = os.environ.get("HF_MODEL_DIR")
+    from ..env import HF_MODEL_DIR
+
+    cache_dir = HF_MODEL_DIR
     model_kwargs = {"device": device}
     if cache_dir:
         model_kwargs["cache_folder"] = cache_dir
@@ -50,4 +52,3 @@ def load_embedding_model(device: str) -> HuggingFaceEmbeddings | None:
     except Exception as exc:
         logging.exception("Failed to load embedding model", exc_info=exc)
         return None
-

@@ -1,20 +1,23 @@
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
+import base64
+import json
+import logging
+import os
+import pickle
+import quopri
+from email.utils import parsedate_to_datetime
+
+from bs4 import BeautifulSoup
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from email.utils import parsedate_to_datetime
-import os, pickle, json
-from dotenv import load_dotenv
-import base64
-import quopri
-import logging
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 from sqlalchemy.orm import Session
-from ..models import Newsletter
-from bs4 import BeautifulSoup
-from ..database import get_db
-load_dotenv()
 
-SCOPES = [os.getenv("GMAIL_SCOPE")]
+from ..database import get_db
+from ..env import GMAIL_CREDENTIALS_FILE, GMAIL_SCOPE, GMAIL_TOKEN_FILE
+from ..models import Newsletter
+
+SCOPES = [GMAIL_SCOPE]
 
 
 def get_authenticated_gmail_service():
@@ -24,9 +27,9 @@ def get_authenticated_gmail_service():
     creds = None
 
     # Step 1: Try loading token
-    if os.path.exists("token.json"):
+    if os.path.exists(GMAIL_TOKEN_FILE):
         try:
-            with open("token.json", "rb") as token:
+            with open(GMAIL_TOKEN_FILE, "rb") as token:
                 creds = pickle.load(token)
         except Exception as e:
             logging.error(f"Failed to load token: {e}")
@@ -38,20 +41,22 @@ def get_authenticated_gmail_service():
             creds.refresh(Request())
         except Exception as e:
             logging.error(f"Token refresh failed: {e}, deleting token.")
-            os.remove("token.json")
+            os.remove(GMAIL_TOKEN_FILE)
             return get_authenticated_gmail_service()
 
     # Step 3: If creds don't exist or still invalid, run OAuth
     if not creds or not creds.valid:
         try:
-            if not os.path.exists("credentials.json"):
+            if not os.path.exists(GMAIL_CREDENTIALS_FILE):
                 logging.error("Missing credentials.json for OAuth flow.")
                 return None
 
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                GMAIL_CREDENTIALS_FILE, SCOPES
+            )
             creds = flow.run_local_server(port=0)
 
-            with open("token.json", "wb") as token:
+            with open(GMAIL_TOKEN_FILE, "wb") as token:
                 pickle.dump(creds, token)
 
         except Exception as e:
@@ -76,12 +81,18 @@ def get_authenticated_gmail_service():
         logging.exception(f"Failed to build Gmail service: {e}")
         return None
 
+
 def scan_bloomberg_emails(service, db: Session):
     logging.info("Starting scan_bloomberg_emails")
     logging.debug("Service: %s, DB Session: %s", service, db)
     try:
         logging.debug("Listing Bloomberg messages from Gmail")
-        results = service.users().messages().list(userId='me', q="from:noreply@news.bloomberg.com").execute()
+        results = (
+            service.users()
+            .messages()
+            .list(userId="me", q="from:noreply@news.bloomberg.com")
+            .execute()
+        )
         messages = results.get("messages", [])
         logging.debug(f"Found {len(messages)} messages")
         if not messages:
@@ -99,9 +110,14 @@ def scan_bloomberg_emails(service, db: Session):
                 logging.debug(f"Skipping {msg_id}, already in DB")
                 continue
 
-            msg = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
-            payload = msg.get('payload', {})
-            headers = {h['name']: h['value'] for h in payload.get('headers', [])}
+            msg = (
+                service.users()
+                .messages()
+                .get(userId="me", id=msg_id, format="full")
+                .execute()
+            )
+            payload = msg.get("payload", {})
+            headers = {h["name"]: h["value"] for h in payload.get("headers", [])}
             raw_date = headers.get("Date")
             received_at = parsedate_to_datetime(raw_date) if raw_date else None
             subject = headers.get("Subject", "Untitled")
@@ -110,12 +126,16 @@ def scan_bloomberg_emails(service, db: Session):
             # Quick category parsing from the raw body (no extraction)
             category = None
             body = ""
-            if 'parts' in payload:
-                for part in payload['parts']:
-                    if part.get('mimeType') == 'text/plain' and 'data' in part.get('body', {}):
+            if "parts" in payload:
+                for part in payload["parts"]:
+                    if part.get("mimeType") == "text/plain" and "data" in part.get(
+                        "body", {}
+                    ):
                         try:
-                            data = part['body']['data']
-                            body = base64.urlsafe_b64decode(data).decode('utf-8', errors='replace')
+                            data = part["body"]["data"]
+                            body = base64.urlsafe_b64decode(data).decode(
+                                "utf-8", errors="replace"
+                            )
                         except Exception as e:
                             logging.warning(f"Failed to decode message {msg_id}: {e}")
                         break
@@ -135,7 +155,7 @@ def scan_bloomberg_emails(service, db: Session):
                 extracted_text=None,
                 chunked_text=None,
                 message_id=msg_id,
-                token_count=None
+                token_count=None,
             )
             db.add(newsletter)
             stored.append(newsletter)
@@ -163,7 +183,11 @@ def fetch_raw_email(service, message_id: str):
             .execute()
         )
         logging.info(f"Fetched raw message for {message_id}")
-        logging.info("Gmail API response for %s: %s", message_id, json.dumps(msg, indent=2)[:1000])
+        logging.info(
+            "Gmail API response for %s: %s",
+            message_id,
+            json.dumps(msg, indent=2)[:1000],
+        )
         return msg
     except Exception:
         logging.exception(f"Failed to fetch raw message for {message_id}")
@@ -172,7 +196,11 @@ def fetch_raw_email(service, message_id: str):
 
 def find_text_plain_part(payload):
     logging.debug("Searching for text/plain part")
-    if payload.get("mimeType") == "text/plain" and "body" in payload and "data" in payload["body"]:
+    if (
+        payload.get("mimeType") == "text/plain"
+        and "body" in payload
+        and "data" in payload["body"]
+    ):
         logging.debug("Found direct text/plain part")
         return payload
     for part in payload.get("parts", []):
@@ -183,6 +211,7 @@ def find_text_plain_part(payload):
     logging.debug("No text/plain part found")
     return None
 
+
 def find_largest_text_plain_part(payload):
     """Return the largest text/plain MIME part available."""
     logging.debug("Locating largest text/plain MIME part")
@@ -191,10 +220,7 @@ def find_largest_text_plain_part(payload):
 
     def _walk(part):
         nonlocal best_part, best_size
-        if (
-            part.get("mimeType") == "text/plain"
-            and "data" in part.get("body", {})
-        ):
+        if part.get("mimeType") == "text/plain" and "data" in part.get("body", {}):
             size = int(part.get("body", {}).get("size", 0))
             if size > best_size:
                 best_part = part
@@ -227,7 +253,12 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
             logging.info(f"extracted_text already exists for message_id: {message_id}")
             return newsletter
 
-        msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
+        msg = (
+            service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
         payload = msg.get("payload", {})
         headers = {h["name"]: h["value"] for h in payload.get("headers", [])}
 
@@ -251,8 +282,6 @@ def extract_bloomberg_email_text(service, db: Session, message_id: str):
         if not body:
             logging.warning(f"No text/plain body found for message_id: {message_id}")
             return None
-
-
 
         # Remove any header metadata that might be embedded in the part
         if body.startswith("Content-Type:"):
@@ -310,10 +339,14 @@ def backfill_categories_from_text(db: Session):
     logging.info("Starting category backfill from extracted_text")
     logging.debug("DB Session: %s", db)
 
-    newsletters = db.query(Newsletter).filter(
-        Newsletter.category == None,
-        Newsletter.extracted_text != None,
-    ).all()
+    newsletters = (
+        db.query(Newsletter)
+        .filter(
+            Newsletter.category == None,
+            Newsletter.extracted_text != None,
+        )
+        .all()
+    )
 
     logging.debug(f"{len(newsletters)} newsletters need category backfill from text")
 
@@ -337,4 +370,3 @@ def backfill_categories_from_text(db: Session):
     db.commit()
     logging.debug("Committed category updates for %d newsletters", len(newsletters))
     logging.info("Finished category backfill from extracted_text")
-

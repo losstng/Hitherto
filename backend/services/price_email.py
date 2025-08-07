@@ -7,12 +7,20 @@ from email.mime.text import MIMEText
 
 from googleapiclient.errors import HttpError
 
-from .email_service import get_authenticated_gmail_service
+from ..env import (
+    EMAIL_RECIPIENT,
+    PRICE_CACHE_FILE,
+    PRICE_EMAIL_INTERVAL,
+    PRICE_EMAIL_RECIPIENT,
+    PRICE_EMAIL_TICKERS,
+    PRICE_THREAD_FILE,
+)
 from ..routers.stocks import get_stock_quotes
+from .email_service import get_authenticated_gmail_service
 
 logger = logging.getLogger(__name__)
-CACHE_FILE = "stock_prices_cache.json"
-THREAD_FILE = "stock_price_thread.json"
+CACHE_FILE = PRICE_CACHE_FILE
+THREAD_FILE = PRICE_THREAD_FILE
 
 
 def load_cached_prices() -> dict:
@@ -59,6 +67,7 @@ def save_thread_info(thread_id: str, message_id: str) -> None:
 
 def _format_prices(previous_prices: dict, current_prices: dict) -> str:
     """Return an HTML table with color-coded price changes."""
+
     def get_color_style(percent_change: float) -> str:
         if percent_change > 1:
             return "color: darkgreen;"
@@ -96,8 +105,8 @@ def _format_prices(previous_prices: dict, current_prices: dict) -> str:
     table = (
         "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse: collapse;'>"
         "<tr><th>Ticker</th><th>Price</th><th>Change</th><th>% Change</th></tr>"
-        + "".join(rows) +
-        "</table>"
+        + "".join(rows)
+        + "</table>"
     )
     return table
 
@@ -121,7 +130,7 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         save_prices_to_cache(current)
         body = _format_prices(previous, current)
 
-        recipient = recipient or os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com")
+        recipient = recipient or EMAIL_RECIPIENT
         message = MIMEText(body, "html", "utf-8")
         message["To"] = recipient
         message["Subject"] = "Stock Price Update"
@@ -137,9 +146,13 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
         if thread_id:
             body_dict["threadId"] = thread_id
 
-        resp_msg = service.users().messages().send(userId="me", body=body_dict).execute()
+        resp_msg = (
+            service.users().messages().send(userId="me", body=body_dict).execute()
+        )
         if resp_msg:
-            save_thread_info(resp_msg.get("threadId", thread_id), resp_msg.get("id", ""))
+            save_thread_info(
+                resp_msg.get("threadId", thread_id), resp_msg.get("id", "")
+            )
         logger.info("Sent stock price email")
         return True
 
@@ -153,9 +166,9 @@ def send_price_email(tickers: str | None = None, recipient: str | None = None) -
 
 def run_price_email_loop(interval: int | None = None) -> None:
     """Continuously send stock price emails every interval."""
-    tickers = os.getenv("PRICE_EMAIL_TICKERS")
-    recipient = os.getenv("PRICE_EMAIL_RECIPIENT", os.getenv("EMAIL_RECIPIENT", "long131005@gmail.com"))
-    interval = interval or int(os.getenv("PRICE_EMAIL_INTERVAL", "300"))
+    tickers = ",".join(PRICE_EMAIL_TICKERS) if PRICE_EMAIL_TICKERS else None
+    recipient = PRICE_EMAIL_RECIPIENT
+    interval = interval or PRICE_EMAIL_INTERVAL
 
     while True:
         send_price_email(tickers, recipient)

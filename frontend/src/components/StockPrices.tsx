@@ -1,6 +1,6 @@
 "use client";
 import { useMemo } from "react";
-import { useStockQuotes } from "@/hooks/useStocks";
+import { useStockQuotes } from "@/hooks";
 
 const DEFAULT_TICKERS = [
     "INOD",

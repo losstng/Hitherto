@@ -1,7 +1,7 @@
 // src/app/layout.tsx
 import React from "react";
 import "@/styles/globals.css";
-import Providers from "@/components/Providers";
+import { Providers } from "@/components";
 
 export const metadata = { title: "Hitherto" };
 
