@@ -37,6 +37,7 @@ Visit <http://localhost:3000> to use the app.
 
 - **backend/** – FastAPI service with routers under `routers/` and helpers in `services/`.
 - **frontend/** – Next.js application.
+  Components and hooks are re-exported via index files and should be imported from `@/components` and `@/hooks`.
 - **debug_tools/** – Gmail API debugging helpers.
 - **scripts/** – Utility shell commands such as `clean_pycache.sh`.
 - **db/** – Local FAISS index stored in `faiss_store/`.

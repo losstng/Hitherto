@@ -2,9 +2,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { ChatMessage, ApiResponse, ContextDoc } from "@/lib/types";
-import ChatHistory from "./ChatHistory";
-import MessageInput from "./MessageInput";
-import { useChatContext } from "./ChatProvider";
+import { ChatHistory, MessageInput } from ".";
+import { useChatContext } from ".";
 
 interface AskResp {
   reply: string;

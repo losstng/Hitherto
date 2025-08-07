@@ -1,6 +1,6 @@
 // src/components/NewsletterTable.tsx
 import { NewsletterLite } from "@/lib/types";
-import NewsletterRow from "./NewsletterRow";
+import { NewsletterRow } from ".";
 
 export default function NewsletterTable({ data }: { data: NewsletterLite[] }) {
   return (

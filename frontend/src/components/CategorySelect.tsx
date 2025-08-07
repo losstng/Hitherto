@@ -1,7 +1,7 @@
 // src/components/CategorySelect.tsx
 "use client";
-import { useCategories } from "@/hooks/useIngest";
-import { useChatContext } from "./ChatProvider";
+import { useCategories } from "@/hooks";
+import { useChatContext } from ".";
 export default function CategorySelect({
   value,
   onChange,

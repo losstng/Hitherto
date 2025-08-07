@@ -13,8 +13,8 @@ This document explains the layout of the project and the quickest way for automa
   - `llm/` and `redis.py` are placeholders for future extensions.
 
 - **frontend/** – Next.js application using the App Router.
-  - `components/` contains UI elements such as the newsletter table.
-  - `app/actions/` and `hooks/` wrap API requests and React Query helpers.
+  - `components/` contains UI elements such as the newsletter table and re-exports them via `index.ts` so they can be imported from `@/components`.
+  - `app/actions/` and `hooks/` wrap API requests and React Query helpers. Hooks are re-exported through `index.ts` and imported from `@/hooks`.
 
 - **debug_tools/** – Helper scripts for manual Gmail API debugging.
 - **scripts/** – Utility shell scripts such as `clean_pycache.sh`.

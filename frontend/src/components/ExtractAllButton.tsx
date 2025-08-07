@@ -1,5 +1,5 @@
 "use client";
-import { useExtractAll } from "@/hooks/useIngest";
+import { useExtractAll } from "@/hooks";
 
 export default function ExtractAllButton() {
   const extractAll = useExtractAll();
