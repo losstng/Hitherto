@@ -1,7 +1,5 @@
 import base64
-import json
 import logging
-import os
 import time
 from email.mime.text import MIMEText
 
@@ -17,6 +15,7 @@ from ..env import (
 )
 from ..routers.stocks import get_stock_quotes
 from .email_service import get_authenticated_gmail_service
+from .json_utils import load_json, save_json
 
 logger = logging.getLogger(__name__)
 CACHE_FILE = PRICE_CACHE_FILE
@@ -25,44 +24,22 @@ THREAD_FILE = PRICE_THREAD_FILE
 
 def load_cached_prices() -> dict:
     """Load cached prices from local file if exists."""
-    if not os.path.exists(CACHE_FILE):
-        return {}
-    try:
-        with open(CACHE_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        logger.warning("Could not load cached prices.")
-        return {}
+    return load_json(CACHE_FILE, {})
 
 
 def save_prices_to_cache(prices: dict) -> None:
     """Save latest prices to local cache."""
-    try:
-        with open(CACHE_FILE, "w") as f:
-            json.dump(prices, f)
-    except Exception as e:
-        logger.warning(f"Failed to write cache: {e}")
+    save_json(CACHE_FILE, prices)
 
 
 def load_thread_info() -> dict:
     """Load saved Gmail thread information if available."""
-    if not os.path.exists(THREAD_FILE):
-        return {}
-    try:
-        with open(THREAD_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        logger.warning("Could not load thread info.")
-        return {}
+    return load_json(THREAD_FILE, {})
 
 
 def save_thread_info(thread_id: str, message_id: str) -> None:
     """Persist Gmail thread and message identifiers."""
-    try:
-        with open(THREAD_FILE, "w") as f:
-            json.dump({"thread_id": thread_id, "message_id": message_id}, f)
-    except Exception as e:
-        logger.warning(f"Failed to write thread info: {e}")
+    save_json(THREAD_FILE, {"thread_id": thread_id, "message_id": message_id})
 
 
 def _format_prices(previous_prices: dict, current_prices: dict) -> str:

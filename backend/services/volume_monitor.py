@@ -1,5 +1,4 @@
 import base64
-import json
 import logging
 import time
 from datetime import datetime, timedelta
@@ -8,6 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
+
+from .json_utils import load_json, save_json
 
 try:  # pragma: no cover - fallback if email deps missing
     from .email_service import get_authenticated_gmail_service
@@ -74,14 +75,7 @@ def detect_volume_spike(df: pd.DataFrame, multiplier: float = 1.75):
 
 def load_alerted_volumes() -> dict:
     """Load last alerted timestamps from file."""
-    if not ALERT_FILE.exists():
-        return {}
-    try:
-        with open(ALERT_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        logger.warning("Could not load alert file.")
-        return {}
+    return load_json(ALERT_FILE, {})
 
 
 def _to_native(value):
@@ -102,31 +96,19 @@ def save_alerted_volumes(alerts: dict) -> None:
     """Persist alert information to disk."""
     try:
         serializable = _to_native(alerts)
-        with open(ALERT_FILE, "w") as f:
-            json.dump(serializable, f)
+        save_json(ALERT_FILE, serializable)
     except Exception as e:
         logger.warning(f"Failed to write alert file: {e}")
 
 
 def load_thread_info() -> dict:
     """Load saved Gmail thread info for volume alerts."""
-    if not THREAD_FILE.exists():
-        return {}
-    try:
-        with open(THREAD_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        logger.warning("Could not load volume thread file.")
-        return {}
+    return load_json(THREAD_FILE, {})
 
 
 def save_thread_info(info: dict) -> None:
     """Persist per-ticker thread identifiers."""
-    try:
-        with open(THREAD_FILE, "w") as f:
-            json.dump(info, f)
-    except Exception as e:
-        logger.warning(f"Failed to write volume thread file: {e}")
+    save_json(THREAD_FILE, info)
 
 
 def send_volume_email(

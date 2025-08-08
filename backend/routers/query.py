@@ -54,16 +54,20 @@ async def context_search(payload: ContextPayload):
     logger.info(
         f"Received /context query='{payload.query}' categories={payload.categories}"
     )
-    docs = retrieve_context(
-        query=payload.query,
-        categories=payload.categories,
-        start_date=payload.start_date,
-        end_date=payload.end_date,
-        k=payload.k,
-        message_ids=payload.message_ids,
-    )
-    items = [
-        {"page_content": d.page_content, "metadata": d.metadata}
-        for d in docs
-    ]
-    return ApiResponse(success=True, data=items)
+    try:
+        docs = retrieve_context(
+            query=payload.query,
+            categories=payload.categories,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            k=payload.k,
+            message_ids=payload.message_ids,
+        )
+        items = [
+            {"page_content": d.page_content, "metadata": d.metadata}
+            for d in docs
+        ]
+        return ApiResponse(success=True, data=items)
+    except Exception as e:
+        logger.exception("Error processing /context")
+        return ApiResponse(success=False, error=str(e))

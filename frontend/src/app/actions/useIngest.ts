@@ -10,30 +10,21 @@ export interface NewsletterMeta {
 /** call POST /ingest/bloomberg_reload */
 const API = process.env.NEXT_PUBLIC_API;
 
-export async function reloadBloomberg(): Promise<NewsletterMeta[]> {
-  const res = await fetch(`${API}/ingest/bloomberg_reload`, { method: "POST" });
+async function post<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`, { method: "POST" });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
-  return json.data as NewsletterMeta[];
+  return json.data as T;
 }
 
-export async function extractText(id: string) {
-  const res = await fetch(`${API}/ingest/extract_text/${id}`, { method: "POST" });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
-}
+export const reloadBloomberg = () =>
+  post<NewsletterMeta[]>("/ingest/bloomberg_reload");
 
-export async function chunkText(id: string) {
-  const res = await fetch(`${API}/ingest/chunk/${id}`, { method: "POST" });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
-}
+export const extractText = (id: string) =>
+  post(`/ingest/extract_text/${id}`);
 
-export async function embedNewsletter(id: string) {
-  const res  = await fetch(`${API}/ingest/embed/${id}`, { method: "POST" });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
-}
+export const chunkText = (id: string) =>
+  post(`/ingest/chunk/${id}`);
+
+export const embedNewsletter = (id: string) =>
+  post(`/ingest/embed/${id}`);
