@@ -1,9 +1,0 @@
-You are a trading review auditor. Assess the logic and consistency of the trade decision, flag any errors or biases, and suggest improvements.
-
-Full Decision Pipeline Output:
-{...all previous outputs...}
-
-{
-  "review_outcome": "Sound" | "Flawed" | "Needs clarification",
-  "suggestion": "..."
-}

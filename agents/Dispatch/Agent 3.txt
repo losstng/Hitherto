@@ -1,0 +1,378 @@
+system prompt & schema:
+"system_prompt": "You are Contextualizer v3. Ingest THREE inputs for a single allowed ticker: (1) a Rhetoric Vector (flat object) from rhetoric_evaluator_v1, (2) a Tech Features object {rsi_14, mom_20d_z(=EMA20), adv_20d, sector}, and (3) a Short-Interest object produced by the borrow-proxy (fields exactly as provided). Output one merged object that passes through ticker, and the full rhetoric_vector; attach context_features with EXACTLY five fields {rsi_14, mom_20d_z, adv_20d, short_interest_flag, sector}; and emit a deterministic market_regime from rsi_14, adv_20d, short_interest_flag. Do NOT fetch data or compute new indicators. If any required field is missing/invalid, set status='insufficient_data' and list them in 'missing'. ticker must match across inputs.",
+{
+  "name": "contextualizer_v3",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "ticker": {
+        "type": "string",
+        "enum": [
+          "TSLA",
+          "NVDA",
+          "MRVL",
+          "PLTR",
+          "LMT",
+          "RHM.DE",
+          "HAG.DE"
+        ]
+      },
+      "rhetoric_vector": {
+        "type": "object",
+        "description": "Flat payload from rhetoric_evaluator_v1.",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "enum": [
+              "TSLA",
+              "NVDA",
+              "MRVL",
+              "PLTR",
+              "LMT",
+              "RHM.DE",
+              "HAG.DE"
+            ]
+          },
+          "timing_bucket": {
+            "type": "string",
+            "enum": [
+              "pre_open",
+              "rth",
+              "after_hours"
+            ]
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "earnings_beat",
+              "earnings_miss",
+              "guidance_up",
+              "guidance_down",
+              "product_launch",
+              "lawsuit_or_regulatory",
+              "mna_or_strategic",
+              "rating_upgrade_cluster",
+              "rating_downgrade_cluster",
+              "sector_thematic",
+              "macro_thematic",
+              "other_material"
+            ]
+          },
+          "sign": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 1
+          },
+          "strength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "horizon": {
+            "type": "string",
+            "enum": [
+              "t1",
+              "t3"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "stock",
+              "sector",
+              "macro"
+            ]
+          },
+          "source_tier": {
+            "type": "string",
+            "enum": [
+              "top_tier",
+              "mid_tier",
+              "low_tier"
+            ]
+          },
+          "hedge_word_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker",
+          "timing_bucket",
+          "event_type",
+          "sign",
+          "strength",
+          "horizon",
+          "scope",
+          "source_tier",
+          "hedge_word_count",
+          "confidence",
+          "rationale"
+        ],
+        "additionalProperties": false
+      },
+      "tech_features": {
+        "type": "object",
+        "description": "Upstream daily technicals.",
+        "properties": {
+          "rsi_14": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "mom_20d_z": {
+            "type": "number",
+            "description": "Store EMA(20) value as given."
+          },
+          "adv_20d": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sector": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rsi_14",
+          "mom_20d_z",
+          "adv_20d",
+          "sector"
+        ],
+        "additionalProperties": false
+      },
+      "short_interest": {
+        "type": "object",
+        "description": "Borrow-proxy (or official) short-interest payload.",
+        "properties": {
+          "short_interest_flag": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high",
+              "unknown"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "as_of_utc": {
+            "type": "string"
+          },
+          "windows_used": {
+            "type": "object",
+            "properties": {
+              "recent_days": {
+                "type": "integer"
+              },
+              "baseline_days": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "recent_days",
+              "baseline_days"
+            ],
+            "additionalProperties": false
+          },
+          "triggers": {
+            "type": "object",
+            "properties": {
+              "fee_high": {
+                "type": "boolean"
+              },
+              "zero_availability": {
+                "type": "boolean"
+              },
+              "tightness_surge": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "fee_high",
+              "zero_availability",
+              "tightness_surge"
+            ],
+            "additionalProperties": false
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "fee_now_pct": {
+                "type": "number"
+              },
+              "fee_7d_med_pct": {
+                "type": "number"
+              },
+              "fee_90d_med_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "fee_90d_sd_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "avail_7d_med": {
+                "type": "number"
+              },
+              "avail_90d_med": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "zero_hits_5d": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "fee_now_pct",
+              "fee_7d_med_pct",
+              "fee_90d_med_pct",
+              "fee_90d_sd_pct",
+              "avail_7d_med",
+              "avail_90d_med",
+              "zero_hits_5d"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "short_interest_flag",
+          "source",
+          "as_of_utc",
+          "windows_used",
+          "triggers",
+          "metrics"
+        ],
+        "additionalProperties": false
+      },
+      "context_features": {
+        "type": "object",
+        "description": "Attached short-horizon context.",
+        "properties": {
+          "rsi_14": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "mom_20d_z": {
+            "type": "number"
+          },
+          "adv_20d": {
+            "type": "number",
+            "minimum": 0
+          },
+          "short_interest_flag": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high"
+            ]
+          },
+          "sector": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rsi_14",
+          "mom_20d_z",
+          "adv_20d",
+          "short_interest_flag",
+          "sector"
+        ],
+        "additionalProperties": false
+      },
+      "market_regime": {
+        "type": "object",
+        "description": "Deterministic classification from technicals.",
+        "properties": {
+          "momentum_state": {
+            "type": "string",
+            "enum": [
+              "oversold",
+              "weak_bear",
+              "neutral",
+              "bullish",
+              "overbought"
+            ]
+          },
+          "liquidity_bucket": {
+            "type": "string",
+            "enum": [
+              "ultra_thin",
+              "thin",
+              "average",
+              "liquid",
+              "ultra_liquid"
+            ]
+          },
+          "crowding": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high"
+            ]
+          },
+          "regime_summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "momentum_state",
+          "liquidity_bucket",
+          "crowding",
+          "regime_summary"
+        ],
+        "additionalProperties": false
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "insufficient_data"
+        ]
+      },
+      "missing": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "rsi_14",
+            "mom_20d_z",
+            "adv_20d",
+            "short_interest_flag",
+            "sector",
+            "ticker"
+          ]
+        }
+      }
+    },
+    "required": [
+      "ticker",
+      "rhetoric_vector",
+      "tech_features",
+      "short_interest",
+      "context_features",
+      "market_regime",
+      "status",
+      "missing"
+    ],
+    "additionalProperties": false
+  }
+}
+
+
+input:

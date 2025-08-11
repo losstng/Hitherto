@@ -1,0 +1,273 @@
+{
+  "name": "rule_engine_v2",
+  "system_prompt": "You are the Rule Engine. Consume Agent 3's payload (rhetoric_vector, tech_features, short_interest, context_features, market_regime) for a single allowed ticker and attach a deterministic trade decision under the key decision. Do NOT alter Agent 3 fields. Apply monotone mappings from rhetoric strength/sign to the score (stronger positive rhetoric cannot reduce the score; stronger negative cannot increase it). Respect execution timing by mapping timing_bucket→execution_plan (pre_open→open, rth→close, after_hours→next_open). Choose horizon in {t1, t3} consistent with inputs and regime. Generate direction, position_size, holding_days, decay_profile, and rationale. Enforce liquidity/borrow/sector caps logically via risk_flags, but always output a complete decision. Output ONLY the merged object matching the schema—no extra keys, no echo outside the schema.",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "ticker": {
+        "type": "string",
+        "enum": ["TSLA", "NVDA", "MRVL", "PLTR", "LMT", "RHM.DE", "HAG.DE"]
+      },
+      "rhetoric_vector": {
+        "type": "object",
+        "description": "Flat payload from rhetoric_evaluator_v1.",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "enum": ["TSLA", "NVDA", "MRVL", "PLTR", "LMT", "RHM.DE", "HAG.DE"]
+          },
+          "timing_bucket": {
+            "type": "string",
+            "enum": ["pre_open", "rth", "after_hours"]
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "earnings_beat",
+              "earnings_miss",
+              "guidance_up",
+              "guidance_down",
+              "product_launch",
+              "lawsuit_or_regulatory",
+              "mna_or_strategic",
+              "rating_upgrade_cluster",
+              "rating_downgrade_cluster",
+              "sector_thematic",
+              "macro_thematic",
+              "other_material"
+            ]
+          },
+          "sign": { "type": "integer", "minimum": -1, "maximum": 1 },
+          "strength": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "horizon": { "type": "string", "enum": ["t1", "t3"] },
+          "scope": { "type": "string", "enum": ["stock", "sector", "macro"] },
+          "source_tier": { "type": "string", "enum": ["top_tier", "mid_tier", "low_tier"] },
+          "hedge_word_count": { "type": "integer", "minimum": 0 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "rationale": { "type": "string" }
+        },
+        "required": [
+          "ticker",
+          "timing_bucket",
+          "event_type",
+          "sign",
+          "strength",
+          "horizon",
+          "scope",
+          "source_tier",
+          "hedge_word_count",
+          "confidence",
+          "rationale"
+        ],
+        "additionalProperties": false
+      },
+      "tech_features": {
+        "type": "object",
+        "description": "Upstream daily technicals.",
+        "properties": {
+          "rsi_14": { "type": "number", "minimum": 0, "maximum": 100 },
+          "mom_20d_z": { "type": "number", "description": "Store EMA(20) value as given." },
+          "adv_20d": { "type": "number", "minimum": 0 },
+          "sector": { "type": "string" }
+        },
+        "required": ["rsi_14", "mom_20d_z", "adv_20d", "sector"],
+        "additionalProperties": false
+      },
+      "short_interest": {
+        "type": "object",
+        "description": "Borrow-proxy (or official) short-interest payload.",
+        "properties": {
+          "short_interest_flag": { "type": "string", "enum": ["normal", "high", "unknown"] },
+          "source": { "type": "string" },
+          "as_of_utc": { "type": "string" },
+          "windows_used": {
+            "type": "object",
+            "properties": {
+              "recent_days": { "type": "integer" },
+              "baseline_days": { "type": "integer" }
+            },
+            "required": ["recent_days", "baseline_days"],
+            "additionalProperties": false
+          },
+          "triggers": {
+            "type": "object",
+            "properties": {
+              "fee_high": { "type": "boolean" },
+              "zero_availability": { "type": "boolean" },
+              "tightness_surge": { "type": "boolean" }
+            },
+            "required": ["fee_high", "zero_availability", "tightness_surge"],
+            "additionalProperties": false
+          },
+          "metrics": {
+            "type": "object",
+            "properties": {
+              "fee_now_pct": { "type": "number" },
+              "fee_7d_med_pct": { "type": "number" },
+              "fee_90d_med_pct": { "type": ["number", "null"] },
+              "fee_90d_sd_pct": { "type": ["number", "null"] },
+              "avail_7d_med": { "type": "number" },
+              "avail_90d_med": { "type": ["number", "null"] },
+              "zero_hits_5d": { "type": "integer" }
+            },
+            "required": [
+              "fee_now_pct",
+              "fee_7d_med_pct",
+              "fee_90d_med_pct",
+              "fee_90d_sd_pct",
+              "avail_7d_med",
+              "avail_90d_med",
+              "zero_hits_5d"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["short_interest_flag", "source", "as_of_utc", "windows_used", "triggers", "metrics"],
+        "additionalProperties": false
+      },
+      "context_features": {
+        "type": "object",
+        "description": "Attached short-horizon context.",
+        "properties": {
+          "rsi_14": { "type": "number", "minimum": 0, "maximum": 100 },
+          "mom_20d_z": { "type": "number" },
+          "adv_20d": { "type": "number", "minimum": 0 },
+          "short_interest_flag": { "type": "string", "enum": ["normal", "high"] },
+          "sector": { "type": "string" }
+        },
+        "required": ["rsi_14", "mom_20d_z", "adv_20d", "short_interest_flag", "sector"],
+        "additionalProperties": false
+      },
+      "market_regime": {
+        "type": "object",
+        "description": "Deterministic classification from technicals.",
+        "properties": {
+          "momentum_state": { "type": "string", "enum": ["oversold", "weak_bear", "neutral", "bullish", "overbought"] },
+          "liquidity_bucket": { "type": "string", "enum": ["ultra_thin", "thin", "average", "liquid", "ultra_liquid"] },
+          "crowding": { "type": "string", "enum": ["normal", "high"] },
+          "regime_summary": { "type": "string" }
+        },
+        "required": ["momentum_state", "liquidity_bucket", "crowding", "regime_summary"],
+        "additionalProperties": false
+      },
+      "status": { "type": "string", "enum": ["ok", "insufficient_data"] },
+      "missing": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["rsi_14", "mom_20d_z", "adv_20d", "short_interest_flag", "sector", "ticker"]
+        }
+      },
+
+      "decision": {
+        "type": "object",
+        "description": "Deterministic trade decision attached by Agent 4; applies to the root-level ticker.",
+        "properties": {
+          "horizon": {
+            "type": "string",
+            "description": "Chosen trading horizon (T+1 or T+3).",
+            "enum": ["t1", "t3"]
+          },
+          "execution_plan": {
+            "type": "string",
+            "description": "Planned execution relative to market hours (derived from rhetoric_vector.timing_bucket).",
+            "enum": ["open", "close", "next_open"]
+          },
+          "direction": {
+            "type": "string",
+            "description": "Trade side based on the score and thresholds.",
+            "enum": ["long", "short", "flat"]
+          },
+          "score": {
+            "type": "number",
+            "description": "Deterministic score on a -5 to +5 scale; monotone in rhetoric strength/sign.",
+            "minimum": -5,
+            "maximum": 5
+          },
+          "position_size": {
+            "type": "number",
+            "description": "Target portfolio weight (0–1 fraction of NAV) after any risk_flag adjustments.",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "holding_days": {
+            "type": "integer",
+            "description": "Intended holding period in trading days.",
+            "minimum": 1
+          },
+          "decay_profile": {
+            "type": "string",
+            "description": "Position decay schedule over the holding period.",
+            "enum": ["none", "linear", "exponential_half_life_1d"]
+          },
+          "risk_flags": {
+            "type": "object",
+            "description": "Constraint flags impacting sizing/execution (set true if binding or likely-binding).",
+            "properties": {
+              "adv_cap_breached": {
+                "type": "boolean",
+                "description": "Would exceed %ADV cap if not adjusted."
+              },
+              "hard_to_borrow": {
+                "type": "boolean",
+                "description": "Locate or borrow cost risk for shorts."
+              },
+              "sector_limit_hit": {
+                "type": "boolean",
+                "description": "Sector exposure cap would be exceeded."
+              },
+              "beta_neutrality_adjustment": {
+                "type": "boolean",
+                "description": "Beta neutrality will adjust raw size."
+              }
+            },
+            "required": [
+              "adv_cap_breached",
+              "hard_to_borrow",
+              "sector_limit_hit",
+              "beta_neutrality_adjustment"
+            ],
+            "additionalProperties": false
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Concise explanation tying rhetoric and context to the decision, including any risk_flag-driven adjustments."
+          },
+          "decision_timestamp": {
+            "type": "string",
+            "description": "ISO-8601 UTC timestamp when the decision is produced."
+          }
+        },
+        "required": [
+          "horizon",
+          "execution_plan",
+          "direction",
+          "score",
+          "position_size",
+          "holding_days",
+          "decay_profile",
+          "risk_flags",
+          "rationale",
+          "decision_timestamp"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "ticker",
+      "rhetoric_vector",
+      "tech_features",
+      "short_interest",
+      "context_features",
+      "market_regime",
+      "status",
+      "missing",
+      "decision"
+    ],
+    "additionalProperties": false
+  }
+}
+
+
+input:

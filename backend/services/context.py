@@ -3,7 +3,7 @@ from datetime import datetime
 
 from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
-
+import os
 from ..env import EMBEDDING_DEVICE, FAISS_STORE_DIR
 from .utils import load_embedding_model
 

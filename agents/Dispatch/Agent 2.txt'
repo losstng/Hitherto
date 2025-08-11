@@ -1,0 +1,121 @@
+"system_prompt": "You are the Rhetoric Evaluator. From a single news item about one of the allowed tickers, produce a structured Rhetoric Vector capturing event_type, sign, strength, horizon (t1 or t3), scope, timing_bucket, source_tier, novelty, and uncertainty (hedge words). Classify only what is explicit in the article; avoid inference beyond the text. timing_bucket must be derived from publication time relative to the primary listing’s trading hours: pre_open, rth, or after_hours. Enforce the ticker universe and monotone mapping: stronger positive rhetoric cannot yield a negative sign.",
+
+{
+  "name": "rhetoric_evaluator_v1",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "ticker": {
+        "type": "string",
+        "description": "One of the supported tickers.",
+        "enum": [
+          "TSLA",
+          "NVDA",
+          "MRVL",
+          "PLTR",
+          "LMT",
+          "RHM.DE",
+          "HAG.DE"
+        ]
+      },
+      "timing_bucket": {
+        "type": "string",
+        "description": "Execution timing class derived from publication time.",
+        "enum": [
+          "pre_open",
+          "rth",
+          "after_hours"
+        ]
+      },
+      "event_type": {
+        "type": "string",
+        "description": "Canonical event category extracted from the article.",
+        "enum": [
+          "earnings_beat",
+          "earnings_miss",
+          "guidance_up",
+          "guidance_down",
+          "product_launch",
+          "lawsuit_or_regulatory",
+          "mna_or_strategic",
+          "rating_upgrade_cluster",
+          "rating_downgrade_cluster",
+          "sector_thematic",
+          "macro_thematic",
+          "other_material"
+        ]
+      },
+      "sign": {
+        "type": "integer",
+        "description": "Overall directional implication.",
+        "minimum": -1,
+        "maximum": 1
+      },
+      "strength": {
+        "type": "integer",
+        "description": "Narrative magnitude on a 1–5 scale.",
+        "minimum": 1,
+        "maximum": 5
+      },
+      "horizon": {
+        "type": "string",
+        "description": "Intended forecast horizon tied to the rhetoric.",
+        "enum": [
+          "t1",
+          "t3"
+        ]
+      },
+      "scope": {
+        "type": "string",
+        "description": "Narrative scope.",
+        "enum": [
+          "stock",
+          "sector",
+          "macro"
+        ]
+      },
+      "source_tier": {
+        "type": "string",
+        "description": "Credibility tier of the source.",
+        "enum": [
+          "top_tier",
+          "mid_tier",
+          "low_tier"
+        ]
+      },
+      "hedge_word_count": {
+        "type": "integer",
+        "description": "Count of uncertainty/hedge terms (e.g., may, could, expects).",
+        "minimum": 0
+      },
+      "confidence": {
+        "type": "number",
+        "description": "Confidence in the assigned sign/event_type (0–1).",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "rationale": {
+        "type": "string",
+        "description": "Concise evidence quotes or references from the article."
+      }
+    },
+    "required": [
+      "ticker",
+      "timing_bucket",
+      "event_type",
+      "sign",
+      "strength",
+      "horizon",
+      "scope",
+      "source_tier",
+      "hedge_word_count",
+      "confidence",
+      "rationale"
+    ],
+    "additionalProperties": false
+  }
+}
+
+
+input:
