@@ -1,9 +1,11 @@
 "use client";
+import React from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { ChatMessage, ApiResponse, ContextDoc } from "@/lib/types";
 import { ChatHistory, MessageInput } from ".";
 import { useChatContext } from ".";
+import { useLLMChat } from "@/hooks/useLLMChat";
 
 interface AskResp {
   reply: string;
@@ -12,6 +14,14 @@ interface AskResp {
 
 export default function ChatPanel() {
   const { context, filters, messages, pushMessage, clearContext } = useChatContext();
+  const [mode, setMode] = React.useState("llm");
+
+  const {
+    messages: llmMessages,
+    send: llmSend,
+    loading: llmLoading,
+    reset: llmReset
+  } = useLLMChat();
 
   interface AskPayload {
     query: string;
@@ -72,7 +82,13 @@ const ask = useMutation({
     }
   });
 
-  const handleSend = (text: string, mode: string) => {
+  // Updated: For LLM, send context IDs and filters too
+  const handleSend = (text: string, sendMode: string) => {
+    setMode(sendMode);
+    if (sendMode === "llm") {
+      const contextIds = context.map(c => c.messageId);
+      llmSend(text, contextIds, filters);
+    } else {
     const userMsg: ChatMessage = {
       id: `${Date.now()}-u`,
       role: "user",
@@ -80,8 +96,19 @@ const ask = useMutation({
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     };
     pushMessage(userMsg);
-    ask.mutate({ text, mode });
+      ask.mutate({ text, mode: sendMode });
+    }
   };
+
+  React.useEffect(() => {
+    if (mode === "llm" && llmMessages.length === 0) {
+      llmReset();
+    }
+    // eslint-disable-next-line
+  }, [mode, llmMessages.length]);
+
+  const displayedMessages = mode === "llm" ? llmMessages : messages;
+  const loading = mode === "llm" ? llmLoading : ask.isPending;
 
   return (
     <div className="flex flex-col h-full w-full bg-white border-l shadow-lg overflow-hidden">
@@ -100,7 +127,7 @@ const ask = useMutation({
           </button>
         </div>
       )}
-      <ChatHistory messages={messages} loading={ask.isPending} />
+      <ChatHistory messages={displayedMessages} loading={loading} />
       <MessageInput onSend={handleSend} />
     </div>
   );

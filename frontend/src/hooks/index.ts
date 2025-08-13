@@ -8,3 +8,5 @@ export {
   useVectorizeAll,
 } from "./useIngest";
 export { useStockQuotes, type StockQuote } from "./useStocks";
+export { useLLMChat } from "./useLLMChat";
+
