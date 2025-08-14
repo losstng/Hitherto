@@ -10,6 +10,7 @@ from sqlalchemy import text
 from . import models
 from .database import engine
 from .env import CORS_ALLOW_ORIGINS, FASTAPI_PORT, GMAIL_SCOPE, LOG_LEVEL
+from .schemas.core.schemas import bootstrap_core_schema
 from .routers import ingest, query, stocks  # Adjust if needed
 from .services.email_service import get_authenticated_gmail_service
 from .services.price_email import run_price_email_loop
@@ -47,6 +48,7 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("Connecting to DB for schema update...")
         models.Base.metadata.create_all(bind=engine)
+        bootstrap_core_schema(str(engine.url))
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info("Schema update successful and connection verified.")
