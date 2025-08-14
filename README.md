@@ -55,6 +55,11 @@ lighter environment.
 - **SystemPrompt.txt** – Prompt text used for LLM summaries.
 - `credentials.json`, `token.json` and `.env` contain sensitive credentials.
 
+## Database bootstrap
+
+The backend includes a comprehensive PostgreSQL schema in `backend/bootstrap_hitherto.py`.
+Run `bootstrap_hitherto(DATABASE_URL)` to create all schemas, tables and partitions.
+
 ## Embedding model cache
 
 The `sentence-transformers/all-MiniLM-L6-v2` model is used for embeddings. If running offline, set `HF_MODEL_DIR` to a directory containing the downloaded model so the services load it from disk.
