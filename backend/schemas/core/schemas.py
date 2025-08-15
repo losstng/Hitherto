@@ -75,6 +75,19 @@ class TradeProposal(MessageEnvelope):
     payload: TradeProposalPayload
 
 
+class ExecutionPayload(BaseModel):
+    asset: str
+    action: str
+    size: float
+    price: float
+    strategy: str = "IMMEDIATE"
+
+
+class ExecutionReport(MessageEnvelope):
+    message_type: Literal["ExecutionReport"] = "ExecutionReport"
+    payload: ExecutionPayload
+
+
 class HumanOverridePayload(BaseModel):
     target_module: str
     command_type: str

@@ -46,8 +46,12 @@ def technical_module():
 
 def test_overseer_run_cycle():
     playbooks = load_playbooks("backend/config/playbooks.json")
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
     overseer = Overseer(playbooks)
-    result = overseer.run_cycle([sentiment_module, technical_module])
+    result = overseer.run_cycle([sentiment_module, technical_module], db=session)
 
     proposal = result["proposal"]
     assert proposal.message_type == "TradeProposal"
@@ -56,6 +60,7 @@ def test_overseer_run_cycle():
     assert result["risk_report"].ok
     assert result["summary"]
     assert proposal.payload.status == "AUTO_APPROVED"
+    assert len(result["executions"]) == 1
 
 
 def test_overseer_llm_reasoning(monkeypatch):
@@ -82,13 +87,18 @@ def test_overseer_llm_reasoning(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     monkeypatch.setitem(__import__("sys").modules, "openai", DummyOpenAI)
     playbooks = load_playbooks("backend/config/playbooks.json")
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
     overseer = Overseer(playbooks)
-    result = overseer.run_cycle([sentiment_module, technical_module])
+    result = overseer.run_cycle([sentiment_module, technical_module], db=session)
     action = result["proposal"].payload.actions[0]
     assert action.size == 5
     assert result["proposal"].payload.rationale[0] == "llm"
     assert result["summary"] == "summary"
     assert result["proposal"].payload.status == "AUTO_APPROVED"
+    assert len(result["executions"]) == 1
 
 
 def test_overseer_risk_veto(monkeypatch):
@@ -108,6 +118,7 @@ def test_overseer_risk_veto(monkeypatch):
     result = overseer.run_cycle([sentiment_module, technical_module])
     assert result["proposal"].payload.actions == []
     assert result["proposal"].payload.status == "REJECTED"
+    assert result["executions"] == []
 
 
 def test_overseer_applies_override():
@@ -124,6 +135,7 @@ def test_overseer_applies_override():
     result = overseer.run_cycle([sentiment_module, technical_module], overrides=[override])
     assert result["proposal"].payload.actions == []
     assert result["proposal"].payload.status == "PENDING_REVIEW"
+    assert result["executions"] == []
 
 
 def test_risk_adjusts_sizes():
@@ -143,6 +155,7 @@ def test_risk_adjusts_sizes():
     result = overseer.run_cycle([sentiment_module, technical_module])
     adjusted = result["proposal"].payload.adjusted_actions[0]
     assert adjusted.size == 100
+    assert result["executions"] == []
 
 
 def test_gates_large_proposals():
@@ -161,6 +174,7 @@ def test_gates_large_proposals():
     overseer = Overseer(playbooks, reasoner=DummyReasoner())
     result = overseer.run_cycle([sentiment_module, technical_module])
     assert result["proposal"].payload.status == "PENDING_REVIEW"
+    assert result["executions"] == []
 
 
 def test_persists_signals_and_proposals():
@@ -172,7 +186,36 @@ def test_persists_signals_and_proposals():
     playbooks = load_playbooks("backend/config/playbooks.json")
     regime = RegimeClassifier(session=session)
     overseer = Overseer(playbooks, regime_classifier=regime)
-    overseer.run_cycle([sentiment_module, technical_module], db=session)
+    result = overseer.run_cycle([sentiment_module, technical_module], db=session)
 
     assert session.query(models.Signal).count() == 2
     assert session.query(models.Proposal).count() == 1
+    assert session.query(models.Decision).count() == 1
+    assert len(result["executions"]) == 1
+
+
+def test_execution_writes_human_note(monkeypatch):
+    playbooks = load_playbooks("backend/config/playbooks.json")
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    class DummyReasoner:
+        available = True
+
+        @staticmethod
+        def summarize_execution(execution):
+            return "executed"
+
+    from backend.services.execution import ExecutionService
+
+    monkeypatch.setattr(
+        "backend.services.overseer.execution", ExecutionService(reasoner=DummyReasoner())
+    )
+
+    overseer = Overseer(playbooks)
+    overseer.run_cycle([sentiment_module, technical_module], db=session)
+
+    decision = session.query(models.Decision).first()
+    assert decision.human_note == "executed"

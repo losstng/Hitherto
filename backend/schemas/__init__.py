@@ -13,6 +13,8 @@ from .core.schemas import (
     TradeAction,
     TradeProposal,
     TradeProposalPayload,
+    ExecutionPayload,
+    ExecutionReport,
 )
 
 __all__ = [
@@ -29,6 +31,8 @@ __all__ = [
     "TradeAction",
     "TradeProposalPayload",
     "TradeProposal",
+    "ExecutionPayload",
+    "ExecutionReport",
     "HumanOverridePayload",
     "HumanOverrideCommand",
 ]

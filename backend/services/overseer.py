@@ -18,11 +18,13 @@ from backend.schemas import (
     HumanOverrideCommand,
     TradeProposal,
     TradeProposalPayload,
+    ExecutionReport,
 )
 from backend.database import SessionLocal
 from backend import models
 from . import risk
 from .reasoner import LLMReasoner
+from .execution import execution, ExecutionService
 
 
 def load_playbooks(path: str) -> Dict[str, Dict[str, float]]:
@@ -236,6 +238,7 @@ class Overseer:
             else:
                 proposal.payload.status = "AUTO_APPROVED"
         summary = self.summarize(proposal)
+        exec_reports: List[ExecutionReport] = []
         try:
             for sig in signals:
                 session.add(
@@ -269,6 +272,10 @@ class Overseer:
                     )
                 )
             session.commit()
+            if proposal.payload.status == "AUTO_APPROVED":
+                exec_reports = execution.execute(
+                    proposal, db_proposal.id, session
+                )
         except SQLAlchemyError:
             session.rollback()
         finally:
@@ -283,4 +290,5 @@ class Overseer:
             "proposal": proposal,
             "risk_report": report,
             "summary": summary,
+            "executions": exec_reports,
         }

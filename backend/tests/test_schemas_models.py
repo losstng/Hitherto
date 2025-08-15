@@ -11,6 +11,8 @@ from backend.schemas.core.schemas import (
     TradeAction,
     TradeProposal,
     TradeProposalPayload,
+    ExecutionPayload,
+    ExecutionReport,
 )
 
 
@@ -76,5 +78,23 @@ def test_human_override_command_validation():
             origin_module="human",
             timestamp=datetime.utcnow(),
             payload={"target_module": "Risk", "command_type": "TIGHTEN"},
+        )
+
+
+def test_execution_report_validation():
+    payload = ExecutionPayload(
+        asset="AAPL", action="BUY", size=10, price=100.0
+    )
+    report = ExecutionReport(
+        origin_module="execution",
+        timestamp=datetime.utcnow(),
+        payload=payload,
+    )
+    assert report.payload.price == 100.0
+    with pytest.raises(ValidationError):
+        ExecutionReport(
+            origin_module="execution",
+            timestamp=datetime.utcnow(),
+            payload={"asset": "AAPL"},
         )
 

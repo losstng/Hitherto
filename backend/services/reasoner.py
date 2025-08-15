@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from backend.schemas import SignalBase, TradeAction, TradeProposal
 
@@ -83,3 +83,21 @@ class LLMReasoner:
             return resp["choices"][0]["message"]["content"].strip()
         except Exception:
             return "; ".join(parts)
+
+    def summarize_execution(self, execution: Dict[str, Any]) -> str:
+        """Summarize a trade execution."""
+        parts = f"{execution['action']} {execution['size']} {execution['asset']} at {execution['price']}"
+        if not self.available:
+            return parts
+        prompt = (
+            "Summarize the following trade execution in one sentence: "
+            + json.dumps(execution, default=str)
+        )
+        try:  # pragma: no cover - network
+            resp = self._client.ChatCompletion.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return resp["choices"][0]["message"]["content"].strip()
+        except Exception:
+            return parts
