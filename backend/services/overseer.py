@@ -12,6 +12,7 @@ from backend.schemas import (
     SentimentSignal,
     TechnicalSignal,
     TradeAction,
+    HumanOverrideCommand,
     TradeProposal,
     TradeProposalPayload,
 )
@@ -109,14 +110,44 @@ class Overseer:
         """Create a human-readable summary via the configured reasoner."""
         return self.reasoner.summarize(proposal)
 
-    def run_cycle(self, modules: List[Callable[[], SignalBase]]):
+    def apply_overrides(
+        self, proposal: TradeProposal, overrides: List[HumanOverrideCommand]
+    ) -> None:
+        """Modify the proposal according to any active human overrides."""
+        for cmd in overrides:
+            if cmd.payload.target_module.lower() != "overseer":
+                continue
+            if cmd.payload.command_type.upper() in {"HALT", "TIGHTEN"}:
+                proposal.payload.actions = []
+                proposal.payload.rationale.append(
+                    f"halted by human: {cmd.payload.reason}"
+                )
+                proposal.payload.requires_human = True
+
+    def run_cycle(
+        self,
+        modules: List[Callable[[], SignalBase]],
+        overrides: Optional[List[HumanOverrideCommand]] = None,
+    ):
         """Run a full overseer cycle: classify regime, gather signals, propose trades."""
         regime_signal = self.regime_classifier.classify()
         signals = [m() for m in modules]
         proposal = self.propose_trades(signals, regime_signal.payload.regime_label)
         report = risk.evaluate(proposal)
         proposal.payload.risk_flags = report.flags
-        proposal.payload.requires_human = not report.ok
+        if not report.ok:
+            proposal.payload.actions = []
+            proposal.payload.rationale.append(
+                f"rejected by risk: {report.flags}"
+            )
+            proposal.payload.requires_human = True
+            proposal.payload.status = "REJECTED"
+        else:
+            self.apply_overrides(proposal, overrides or [])
+            if proposal.payload.requires_human:
+                proposal.payload.status = "PENDING_REVIEW"
+            else:
+                proposal.payload.status = "AUTO_APPROVED"
         summary = self.summarize(proposal)
         return {
             "regime_signal": regime_signal,

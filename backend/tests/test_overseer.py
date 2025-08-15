@@ -5,6 +5,8 @@ from backend.schemas import (
     SentimentSignal,
     TechnicalPayload,
     TechnicalSignal,
+    HumanOverrideCommand,
+    HumanOverridePayload,
 )
 from backend.services.overseer import Overseer, load_playbooks
 
@@ -48,6 +50,7 @@ def test_overseer_run_cycle():
     assert result["regime_signal"].payload.regime_label == "bull"
     assert result["risk_report"].ok
     assert result["summary"]
+    assert proposal.payload.status == "AUTO_APPROVED"
 
 
 def test_overseer_llm_reasoning(monkeypatch):
@@ -80,3 +83,39 @@ def test_overseer_llm_reasoning(monkeypatch):
     assert action.size == 5
     assert result["proposal"].payload.rationale[0] == "llm"
     assert result["summary"] == "summary"
+    assert result["proposal"].payload.status == "AUTO_APPROVED"
+
+
+def test_overseer_risk_veto(monkeypatch):
+    playbooks = load_playbooks("backend/config/playbooks.json")
+    overseer = Overseer(playbooks)
+
+    def small_risk(proposal):
+        from backend.services.risk import RiskReport
+
+        flags = {}
+        for a in proposal.payload.actions:
+            if a.size > 1:
+                flags[a.asset] = "too large"
+        return RiskReport(ok=not flags, flags=flags)
+
+    monkeypatch.setattr("backend.services.overseer.risk.evaluate", small_risk)
+    result = overseer.run_cycle([sentiment_module, technical_module])
+    assert result["proposal"].payload.actions == []
+    assert result["proposal"].payload.status == "REJECTED"
+
+
+def test_overseer_applies_override():
+    playbooks = load_playbooks("backend/config/playbooks.json")
+    overseer = Overseer(playbooks)
+
+    override = HumanOverrideCommand(
+        origin_module="human",
+        timestamp=datetime.utcnow(),
+        payload=HumanOverridePayload(
+            target_module="overseer", command_type="HALT", reason="maintenance"
+        ),
+    )
+    result = overseer.run_cycle([sentiment_module, technical_module], overrides=[override])
+    assert result["proposal"].payload.actions == []
+    assert result["proposal"].payload.status == "PENDING_REVIEW"
