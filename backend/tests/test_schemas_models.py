@@ -5,10 +5,12 @@ from pydantic import ValidationError
 
 from backend.schemas.core.schemas import (
     HumanOverrideCommand,
+    HumanOverridePayload,
     SentimentPayload,
     SentimentSignal,
     TradeAction,
     TradeProposal,
+    TradeProposalPayload,
 )
 
 
@@ -20,16 +22,17 @@ def test_sentiment_signal_validation():
         confidence=0.9,
     )
     sig = SentimentSignal(
-        module="sentiment",
+        origin_module="sentiment",
         timestamp=datetime.utcnow(),
         payload=payload,
         confidence=0.9,
     )
     assert sig.payload.asset == "AAPL"
+    assert sig.message_type == "SentimentSignal"
 
     with pytest.raises(ValidationError):
         SentimentSignal(
-            module="sentiment",
+            origin_module="sentiment",
             timestamp=datetime.utcnow(),
             payload={"asset": "AAPL"},  # missing required fields
         )
@@ -37,26 +40,41 @@ def test_sentiment_signal_validation():
 
 def test_trade_proposal_requires_actions():
     action = TradeAction(asset="XYZ", action="BUY", size=1000)
-    proposal = TradeProposal(
+    payload = TradeProposalPayload(
         regime="bull",
         actions=[action],
         rationale=["signal_id:1"],
         risk_flags={},
     )
-    assert proposal.actions[0].asset == "XYZ"
+    proposal = TradeProposal(
+        origin_module="overseer",
+        timestamp=datetime.utcnow(),
+        payload=payload,
+    )
+    assert proposal.payload.actions[0].asset == "XYZ"
 
     with pytest.raises(ValidationError):
-        TradeProposal(regime="bull", actions=[], rationale=["none"])
+        bad_payload = TradeProposalPayload(regime="bull", actions=[], rationale=["none"])
+        TradeProposal(origin_module="overseer", timestamp=datetime.utcnow(), payload=bad_payload)
 
 
 def test_human_override_command_validation():
-    cmd = HumanOverrideCommand(
+    payload = HumanOverridePayload(
         target_module="Risk",
         command_type="TIGHTEN",
         reason="policy_uncertainty",
     )
-    assert cmd.target_module == "Risk"
+    cmd = HumanOverrideCommand(
+        origin_module="human",
+        timestamp=datetime.utcnow(),
+        payload=payload,
+    )
+    assert cmd.payload.target_module == "Risk"
 
     with pytest.raises(ValidationError):
-        HumanOverrideCommand(target_module="Risk", command_type="TIGHTEN")
+        HumanOverrideCommand(
+            origin_module="human",
+            timestamp=datetime.utcnow(),
+            payload={"target_module": "Risk", "command_type": "TIGHTEN"},
+        )
 

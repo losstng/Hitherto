@@ -1,15 +1,21 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 
 from pydantic import BaseModel, Field
 
 
-class SignalBase(BaseModel):
-    """Common envelope for all module signals."""
+class MessageEnvelope(BaseModel):
+    """Base structure for messages exchanged between modules."""
 
-    module: str
     timestamp: datetime
+    origin_module: str
+    message_type: str
     payload: Dict[str, Any]
+
+
+class SignalBase(MessageEnvelope):
+    """Envelope for all module signals."""
+
     confidence: Optional[float] = None
 
 
@@ -29,10 +35,12 @@ class TechnicalPayload(BaseModel):
 
 
 class SentimentSignal(SignalBase):
+    message_type: Literal["SentimentSignal"] = "SentimentSignal"
     payload: SentimentPayload
 
 
 class TechnicalSignal(SignalBase):
+    message_type: Literal["TechnicalSignal"] = "TechnicalSignal"
     payload: TechnicalPayload
 
 
@@ -42,7 +50,7 @@ class TradeAction(BaseModel):
     size: float
 
 
-class TradeProposal(BaseModel):
+class TradeProposalPayload(BaseModel):
     regime: str
     actions: List[TradeAction] = Field(..., min_length=1)
     rationale: List[Any]
@@ -50,9 +58,19 @@ class TradeProposal(BaseModel):
     requires_human: bool = False
 
 
-class HumanOverrideCommand(BaseModel):
+class TradeProposal(MessageEnvelope):
+    message_type: Literal["TradeProposal"] = "TradeProposal"
+    payload: TradeProposalPayload
+
+
+class HumanOverridePayload(BaseModel):
     target_module: str
     command_type: str
     parameters: Dict[str, Any] = Field(default_factory=dict)
     reason: str
+
+
+class HumanOverrideCommand(MessageEnvelope):
+    message_type: Literal["HumanOverrideCommand"] = "HumanOverrideCommand"
+    payload: HumanOverridePayload
 
