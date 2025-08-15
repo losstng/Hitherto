@@ -44,6 +44,16 @@ class TechnicalSignal(SignalBase):
     payload: TechnicalPayload
 
 
+class RegimePayload(BaseModel):
+    regime_label: str
+    confidence: float
+
+
+class RegimeSignal(SignalBase):
+    message_type: Literal["RegimeSignal"] = "RegimeSignal"
+    payload: RegimePayload
+
+
 class TradeAction(BaseModel):
     asset: str
     action: str

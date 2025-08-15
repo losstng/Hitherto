@@ -1,0 +1,10 @@
+{
+  "bull": {
+    "sentiment": 0.5,
+    "technical": 0.5
+  },
+  "bear": {
+    "sentiment": 0.3,
+    "technical": 0.7
+  }
+}
