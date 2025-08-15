@@ -48,3 +48,30 @@ def test_overseer_run_cycle():
     assert result["regime_signal"].payload.regime_label == "bull"
     assert result["risk_report"].ok
     assert result["summary"]
+
+
+def test_overseer_llm_reasoning(monkeypatch):
+    class DummyOpenAI:
+        api_key = ""
+
+        class ChatCompletion:
+            @staticmethod
+            def create(*args, **kwargs):
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": "{\"actions\":[{\"asset\":\"AAPL\",\"action\":\"BUY\",\"size\":5,\"rationale\":\"llm\"}]}"
+                            }
+                        }
+                    ]
+                }
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    monkeypatch.setitem(__import__("sys").modules, "openai", DummyOpenAI)
+    playbooks = load_playbooks("backend/config/playbooks.json")
+    overseer = Overseer(playbooks)
+    result = overseer.run_cycle([sentiment_module, technical_module])
+    action = result["proposal"].payload.actions[0]
+    assert action.size == 5
+    assert result["proposal"].payload.rationale[0] == "llm"

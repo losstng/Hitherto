@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 import json
 import os
-from typing import Callable, Dict, List, Any
+from typing import Callable, Dict, List, Any, Tuple
 
 from backend.schemas import (
     RegimeSignal,
@@ -17,6 +17,7 @@ from backend.schemas import (
     TradeProposalPayload,
 )
 from . import risk
+from .reasoner import LLMReasoner
 
 
 def load_playbooks(path: str) -> Dict[str, Dict[str, float]]:
@@ -44,6 +45,7 @@ class Overseer:
     def __init__(self, playbooks: Dict[str, Dict[str, float]]):
         self.playbooks = playbooks
         self.regime_classifier = RegimeClassifier()
+        self.reasoner = LLMReasoner()
 
     # -----------------------------------------------------
     # Internal helpers
@@ -71,7 +73,7 @@ class Overseer:
             scores[asset] = scores.get(asset, 0.0) + weight * self._score_signal(sig)
         return scores
 
-    def propose_trades(self, scores: Dict[str, float], regime: str) -> TradeProposal:
+    def _rule_based_actions(self, scores: Dict[str, float]) -> Tuple[List[TradeAction], List[Any]]:
         actions: List[TradeAction] = []
         rationale: List[Any] = []
         for asset, score in scores.items():
@@ -81,8 +83,16 @@ class Overseer:
             elif score < 0:
                 actions.append(TradeAction(asset=asset, action="SELL", size=10))
                 rationale.append(f"{asset} score {score:.2f} -> SELL")
+        return actions, rationale
+
+    def propose_trades(self, signals: List[SignalBase], regime: str) -> TradeProposal:
+        if self.reasoner.available:
+            actions, rationale = self.reasoner.decide(regime, signals, self._weights(regime))
+        else:
+            scores = self.fuse_signals(signals, regime)
+            actions, rationale = self._rule_based_actions(scores)
         if not actions:
-            actions.append(TradeAction(asset="NONE", action="HOLD", size=0))
+            actions = [TradeAction(asset="NONE", action="HOLD", size=0)]
         payload = TradeProposalPayload(regime=regime, actions=actions, rationale=rationale)
         return TradeProposal(
             origin_module="overseer",
@@ -96,7 +106,9 @@ class Overseer:
             try:
                 import openai
 
-                prompt = "Summarize the following trade proposal: " + str(proposal.payload.dict())
+                prompt = "Summarize the following trade proposal: " + str(
+                    proposal.payload.model_dump()
+                )
                 resp = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[{"role": "user", "content": prompt}],
@@ -111,8 +123,7 @@ class Overseer:
         """Run a full overseer cycle: classify regime, gather signals, propose trades."""
         regime_signal = self.regime_classifier.classify()
         signals = [m() for m in modules]
-        scores = self.fuse_signals(signals, regime_signal.payload.regime_label)
-        proposal = self.propose_trades(scores, regime_signal.payload.regime_label)
+        proposal = self.propose_trades(signals, regime_signal.payload.regime_label)
         report = risk.evaluate(proposal)
         proposal.payload.risk_flags = report.flags
         proposal.payload.requires_human = not report.ok
