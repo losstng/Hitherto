@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
-import os
-from typing import Callable, Dict, List, Any, Tuple
+from typing import Callable, Dict, List, Any, Tuple, Optional
 
 from backend.schemas import (
     RegimeSignal,
@@ -42,10 +41,16 @@ class RegimeClassifier:
 class Overseer:
     """Central coordinator for signal fusion and proposal generation."""
 
-    def __init__(self, playbooks: Dict[str, Dict[str, float]]):
+    def __init__(
+        self,
+        playbooks: Dict[str, Dict[str, float]],
+        *,
+        reasoner: Optional[LLMReasoner] = None,
+        regime_classifier: Optional[RegimeClassifier] = None,
+    ):
         self.playbooks = playbooks
-        self.regime_classifier = RegimeClassifier()
-        self.reasoner = LLMReasoner()
+        self.regime_classifier = regime_classifier or RegimeClassifier()
+        self.reasoner = reasoner or LLMReasoner()
 
     # -----------------------------------------------------
     # Internal helpers
@@ -101,23 +106,8 @@ class Overseer:
         )
 
     def summarize(self, proposal: TradeProposal) -> str:
-        """Create a human-readable summary using OpenAI if available."""
-        if os.getenv("OPENAI_API_KEY"):
-            try:
-                import openai
-
-                prompt = "Summarize the following trade proposal: " + str(
-                    proposal.payload.model_dump()
-                )
-                resp = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                return resp["choices"][0]["message"]["content"].strip()
-            except Exception:
-                pass
-        parts = [f"{a.action} {a.size} {a.asset}" for a in proposal.payload.actions]
-        return "; ".join(parts)
+        """Create a human-readable summary via the configured reasoner."""
+        return self.reasoner.summarize(proposal)
 
     def run_cycle(self, modules: List[Callable[[], SignalBase]]):
         """Run a full overseer cycle: classify regime, gather signals, propose trades."""

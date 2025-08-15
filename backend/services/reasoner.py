@@ -5,7 +5,7 @@ import json
 import os
 from typing import Dict, List, Tuple
 
-from backend.schemas import SignalBase, TradeAction
+from backend.schemas import SignalBase, TradeAction, TradeProposal
 
 
 class LLMReasoner:
@@ -65,3 +65,21 @@ class LLMReasoner:
             return actions, rationales
         except Exception:
             return [], []
+
+    def summarize(self, proposal: TradeProposal) -> str:
+        """Return a human readable summary via the LLM."""
+        parts = [f"{a.action} {a.size} {a.asset}" for a in proposal.payload.actions]
+        if not self.available:
+            return "; ".join(parts)
+        prompt = (
+            "Summarize the following trade proposal in one sentence: "
+            + json.dumps(proposal.payload.model_dump(), default=str)
+        )
+        try:  # pragma: no cover - network
+            resp = self._client.ChatCompletion.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return resp["choices"][0]["message"]["content"].strip()
+        except Exception:
+            return "; ".join(parts)

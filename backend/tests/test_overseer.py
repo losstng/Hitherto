@@ -57,15 +57,19 @@ def test_overseer_llm_reasoning(monkeypatch):
         class ChatCompletion:
             @staticmethod
             def create(*args, **kwargs):
-                return {
-                    "choices": [
-                        {
-                            "message": {
-                                "content": "{\"actions\":[{\"asset\":\"AAPL\",\"action\":\"BUY\",\"size\":5,\"rationale\":\"llm\"}]}"
+                msg = kwargs["messages"][0]["content"]
+                if "output a JSON object" in msg:
+                    return {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": "{\"actions\":[{\"asset\":\"AAPL\",\"action\":\"BUY\",\"size\":5,\"rationale\":\"llm\"}]}"
+                                }
                             }
-                        }
-                    ]
-                }
+                        ]
+                    }
+                else:
+                    return {"choices": [{"message": {"content": "summary"}}]}
 
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     monkeypatch.setitem(__import__("sys").modules, "openai", DummyOpenAI)
@@ -75,3 +79,4 @@ def test_overseer_llm_reasoning(monkeypatch):
     action = result["proposal"].payload.actions[0]
     assert action.size == 5
     assert result["proposal"].payload.rationale[0] == "llm"
+    assert result["summary"] == "summary"
