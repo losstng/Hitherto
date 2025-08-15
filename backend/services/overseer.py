@@ -5,6 +5,9 @@ from datetime import datetime
 import json
 from typing import Callable, Dict, List, Any, Tuple, Optional
 
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from backend.schemas import (
     RegimeSignal,
     RegimePayload,
@@ -16,6 +19,8 @@ from backend.schemas import (
     TradeProposal,
     TradeProposalPayload,
 )
+from backend.database import SessionLocal
+from backend import models
 from . import risk
 from .reasoner import LLMReasoner
 
@@ -27,10 +32,67 @@ def load_playbooks(path: str) -> Dict[str, Dict[str, float]]:
 
 
 class RegimeClassifier:
-    """Placeholder regime classifier returning a static regime."""
+    """Simple regime classifier with hysteresis and confirmation."""
+
+    def __init__(self, *, session: Optional[Session] = None, dwell: int = 3):
+        self._session = session
+        self._dwell = dwell
+        self._current = "bull"
+        self._pending: Optional[str] = None
+        self._count = 0
+        self.awaiting_confirmation = False
+
+    def _determine_regime(self) -> str:
+        return "bull" if datetime.utcnow().minute % 2 == 0 else "bear"
+
+    def _log(self, label: str, confirmed: bool) -> None:
+        try:
+            session = self._session or SessionLocal()
+            session.add(
+                models.Regime(
+                    effective_at=datetime.utcnow(),
+                    regime_label=label,
+                    classified_by="AI",
+                    confidence=1.0,
+                    confirmed=confirmed,
+                )
+            )
+            session.commit()
+        except SQLAlchemyError:
+            pass
+        finally:
+            if self._session is None:
+                try:
+                    session.close()
+                except Exception:
+                    pass
+
+    @property
+    def active_regime(self) -> str:
+        return self._current
+
+    def confirm_pending(self) -> None:
+        if self.awaiting_confirmation and self._pending:
+            self._current = self._pending
+            self.awaiting_confirmation = False
+            self._log(self._current, True)
+            self._pending = None
 
     def classify(self) -> RegimeSignal:
-        payload = RegimePayload(regime_label="bull", confidence=1.0)
+        candidate = self._determine_regime()
+        if candidate != self._current:
+            if self._pending != candidate:
+                self._pending = candidate
+                self._count = 1
+            else:
+                self._count += 1
+                if self._count >= self._dwell:
+                    self.awaiting_confirmation = True
+                    self._log(candidate, False)
+        else:
+            self._pending = None
+            self._count = 0
+        payload = RegimePayload(regime_label=self._current, confidence=1.0)
         return RegimeSignal(
             origin_module="regime",
             timestamp=datetime.utcnow(),
@@ -44,7 +106,7 @@ class Overseer:
 
     def __init__(
         self,
-        playbooks: Dict[str, Dict[str, float]],
+        playbooks: Dict[str, Any],
         *,
         reasoner: Optional[LLMReasoner] = None,
         regime_classifier: Optional[RegimeClassifier] = None,
@@ -57,7 +119,10 @@ class Overseer:
     # Internal helpers
     # -----------------------------------------------------
     def _weights(self, regime: str) -> Dict[str, float]:
-        return self.playbooks.get(regime, {})
+        return self.playbooks.get(regime, {}).get("weights", {})
+
+    def _review_threshold(self, regime: str) -> Optional[float]:
+        return self.playbooks.get(regime, {}).get("review_threshold")
 
     def _score_signal(self, sig: SignalBase) -> float:
         if isinstance(sig, SentimentSignal):
@@ -128,12 +193,30 @@ class Overseer:
         self,
         modules: List[Callable[[], SignalBase]],
         overrides: Optional[List[HumanOverrideCommand]] = None,
+        db: Optional[Session] = None,
     ):
         """Run a full overseer cycle: classify regime, gather signals, propose trades."""
+        session = db or SessionLocal()
+        own_session = db is None
         regime_signal = self.regime_classifier.classify()
+        regime = self.regime_classifier.active_regime
         signals = [m() for m in modules]
-        proposal = self.propose_trades(signals, regime_signal.payload.regime_label)
+        proposal = self.propose_trades(signals, regime)
         report = risk.evaluate(proposal)
+        if not report.ok and report.suggested:
+            adjusted = []
+            for action in proposal.payload.actions:
+                if action.asset in report.suggested:
+                    new_size = report.suggested[action.asset]
+                    adjusted.append(TradeAction(asset=action.asset, action=action.action, size=new_size))
+                    proposal.payload.rationale.append(
+                        f"size for {action.asset} adjusted to {new_size} by risk"
+                    )
+                else:
+                    adjusted.append(action)
+            proposal.payload.adjusted_actions = adjusted
+            proposal.payload.actions = adjusted
+            report.ok = True
         proposal.payload.risk_flags = report.flags
         if not report.ok:
             proposal.payload.actions = []
@@ -144,11 +227,56 @@ class Overseer:
             proposal.payload.status = "REJECTED"
         else:
             self.apply_overrides(proposal, overrides or [])
+            threshold = self._review_threshold(regime)
+            actions_to_check = proposal.payload.adjusted_actions or proposal.payload.actions
+            if threshold is not None and any(a.size > threshold for a in actions_to_check):
+                proposal.payload.requires_human = True
             if proposal.payload.requires_human:
                 proposal.payload.status = "PENDING_REVIEW"
             else:
                 proposal.payload.status = "AUTO_APPROVED"
         summary = self.summarize(proposal)
+        try:
+            for sig in signals:
+                session.add(
+                    models.Signal(
+                        module_name=sig.origin_module,
+                        signal_type=sig.message_type,
+                        content_json=sig.payload.model_dump(),
+                        generated_at=sig.timestamp,
+                    )
+                )
+            session.commit()
+            status_map = {
+                "AUTO_APPROVED": models.ProposalStatus.APPROVED,
+                "PENDING_REVIEW": models.ProposalStatus.PENDING_REVIEW,
+                "REJECTED": models.ProposalStatus.REJECTED,
+            }
+            db_proposal = models.Proposal(
+                proposal_json=proposal.payload.model_dump(),
+                status=status_map.get(proposal.payload.status, models.ProposalStatus.PENDING_REVIEW),
+            )
+            session.add(db_proposal)
+            session.commit()
+            for cmd in overrides or []:
+                session.add(
+                    models.Override(
+                        module=cmd.payload.target_module,
+                        action=cmd.payload.command_type,
+                        details_json=cmd.payload.parameters,
+                        user=cmd.payload.parameters.get("user", "unknown"),
+                        proposal_id=db_proposal.id,
+                    )
+                )
+            session.commit()
+        except SQLAlchemyError:
+            session.rollback()
+        finally:
+            if own_session:
+                try:
+                    session.close()
+                except Exception:
+                    pass
         return {
             "regime_signal": regime_signal,
             "signals": signals,

@@ -101,6 +101,7 @@ class Regime(Base):
     regime_label = Column(String, nullable=False)
     classified_by = Column(String, nullable=False)
     confidence = Column(Float, nullable=True)
+    confirmed = Column(Boolean, default=False, nullable=False)
     notes = Column(Text, nullable=True)
 
 

@@ -67,6 +67,7 @@ class TradeProposalPayload(BaseModel):
     risk_flags: Dict[str, Any] = Field(default_factory=dict)
     requires_human: bool = False
     status: Literal["PENDING", "AUTO_APPROVED", "PENDING_REVIEW", "REJECTED"] = "PENDING"
+    adjusted_actions: Optional[List[TradeAction]] = None
 
 
 class TradeProposal(MessageEnvelope):

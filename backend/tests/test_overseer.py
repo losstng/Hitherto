@@ -7,8 +7,13 @@ from backend.schemas import (
     TechnicalSignal,
     HumanOverrideCommand,
     HumanOverridePayload,
+    TradeAction,
 )
-from backend.services.overseer import Overseer, load_playbooks
+from backend.services.overseer import Overseer, load_playbooks, RegimeClassifier
+from backend.database import Base
+from backend import models
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 def sentiment_module():
@@ -97,7 +102,7 @@ def test_overseer_risk_veto(monkeypatch):
         for a in proposal.payload.actions:
             if a.size > 1:
                 flags[a.asset] = "too large"
-        return RiskReport(ok=not flags, flags=flags)
+        return RiskReport(ok=not flags, flags=flags, suggested={})
 
     monkeypatch.setattr("backend.services.overseer.risk.evaluate", small_risk)
     result = overseer.run_cycle([sentiment_module, technical_module])
@@ -119,3 +124,55 @@ def test_overseer_applies_override():
     result = overseer.run_cycle([sentiment_module, technical_module], overrides=[override])
     assert result["proposal"].payload.actions == []
     assert result["proposal"].payload.status == "PENDING_REVIEW"
+
+
+def test_risk_adjusts_sizes():
+    playbooks = load_playbooks("backend/config/playbooks.json")
+    class DummyReasoner:
+        available = True
+
+        @staticmethod
+        def decide(regime, signals, weights):
+            return [TradeAction(asset="AAPL", action="BUY", size=150)], ["big"]
+
+        @staticmethod
+        def summarize(proposal):  # pragma: no cover - not used
+            return ""
+
+    overseer = Overseer(playbooks, reasoner=DummyReasoner())
+    result = overseer.run_cycle([sentiment_module, technical_module])
+    adjusted = result["proposal"].payload.adjusted_actions[0]
+    assert adjusted.size == 100
+
+
+def test_gates_large_proposals():
+    playbooks = load_playbooks("backend/config/playbooks.json")
+    class DummyReasoner:
+        available = True
+
+        @staticmethod
+        def decide(regime, signals, weights):
+            return [TradeAction(asset="AAPL", action="BUY", size=60)], ["large"]
+
+        @staticmethod
+        def summarize(proposal):  # pragma: no cover - not used
+            return ""
+
+    overseer = Overseer(playbooks, reasoner=DummyReasoner())
+    result = overseer.run_cycle([sentiment_module, technical_module])
+    assert result["proposal"].payload.status == "PENDING_REVIEW"
+
+
+def test_persists_signals_and_proposals():
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    playbooks = load_playbooks("backend/config/playbooks.json")
+    regime = RegimeClassifier(session=session)
+    overseer = Overseer(playbooks, regime_classifier=regime)
+    overseer.run_cycle([sentiment_module, technical_module], db=session)
+
+    assert session.query(models.Signal).count() == 2
+    assert session.query(models.Proposal).count() == 1

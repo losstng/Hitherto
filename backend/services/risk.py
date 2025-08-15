@@ -11,6 +11,7 @@ class RiskReport(BaseModel):
 
     ok: bool
     flags: Dict[str, Any]
+    suggested: Dict[str, float] = {}
 
 
 def evaluate(proposal: TradeProposal, max_size: float = 100) -> RiskReport:
@@ -21,8 +22,10 @@ def evaluate(proposal: TradeProposal, max_size: float = 100) -> RiskReport:
         max_size: Maximum allowed size for any trade action.
     """
     flags: Dict[str, Any] = {}
+    suggested: Dict[str, float] = {}
     for action in proposal.payload.actions:
         if action.size > max_size:
             flags[action.asset] = f"size {action.size} exceeds limit {max_size}"
+            suggested[action.asset] = max_size
     ok = not flags
-    return RiskReport(ok=ok, flags=flags)
+    return RiskReport(ok=ok, flags=flags, suggested=suggested)
