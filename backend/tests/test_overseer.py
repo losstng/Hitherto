@@ -102,7 +102,7 @@ def test_overseer_risk_veto(monkeypatch):
         for a in proposal.payload.actions:
             if a.size > 1:
                 flags[a.asset] = "too large"
-        return RiskReport(ok=not flags, flags=flags, suggested={})
+        return RiskReport(ok=not flags, flags=flags, suggested={}, metrics={}, summary="")
 
     monkeypatch.setattr("backend.services.overseer.risk.evaluate", small_risk)
     result = overseer.run_cycle([sentiment_module, technical_module])
