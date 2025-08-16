@@ -86,6 +86,23 @@ import { useFilters } from "@/hooks";
 <button className="px-3 py-1 bg-blue-600 text-white rounded">Send</button>
 ```
 
+### Commit Messages & PRs
+
+- Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages.
+- Keep commits focused; avoid bundling unrelated changes.
+- Pull requests should describe the intent, summarize changes, and link relevant issues.
+
+Example commit message:
+
+```
+feat: add sentiment signal format to module docs
+```
+
+PR checklist:
+- [ ] Tests and lint pass
+- [ ] Documentation updated
+- [ ] Reviewer assigned
+
 ## LLM Prompting Rules
 
 - Begin prompts with a short system message outlining constraints.

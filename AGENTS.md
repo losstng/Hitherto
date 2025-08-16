@@ -45,6 +45,25 @@ Hitherto is an ever-evolving framework built around large language models as the
    - `.env` listing all backend variables read by `backend/env.py`.
    - `credentials.json` downloaded from Google Cloud for OAuth.
    - `token.json` will be generated automatically after completing the OAuth flow.
+
+### Required environment variables
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | Database connection string |
+| `FASTAPI_PORT` | Port for FastAPI server |
+| `GMAIL_SCOPE` | OAuth scopes for Gmail access |
+| `MODEL_IN_USE` | Default LLM model name |
+| `HF_MODEL_DIR` | Optional path for offline HuggingFace models |
+
+Example `.env` snippet:
+
+```env
+DATABASE_URL=sqlite:///db/hitherto.db
+FASTAPI_PORT=8000
+GMAIL_SCOPE=https://www.googleapis.com/auth/gmail.modify
+MODEL_IN_USE=gpt-3.5-turbo
+```
 5. Run the test suite to confirm the environment:
    ```bash
    pytest -q

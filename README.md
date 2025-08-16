@@ -20,6 +20,15 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
    - `.env` defines all backend settings and is loaded by `backend/env.py`.
    - `credentials.json` holds the Google OAuth client information.
    - `token.json` will be created after completing the OAuth flow.
+   Minimal `.env` template:
+
+   ```env
+   DATABASE_URL=sqlite:///db/hitherto.db
+   FASTAPI_PORT=8000
+   GMAIL_SCOPE=https://www.googleapis.com/auth/gmail.modify
+   MODEL_IN_USE=gpt-3.5-turbo
+   ```
+
 5. Start the API server:
    ```bash
    export PYTHONPATH=$(pwd)

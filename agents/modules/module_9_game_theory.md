@@ -12,3 +12,10 @@ Anticipates strategies of other market participants to adjust or defend trading 
 - AI flags adversarial patterns; traders validate and add market lore.
 - Strategy sessions combine human insight with model suggestions.
 - Post-mortems update adversary profiles for future reference.
+
+## Adversarial patterns
+- Spoofing: cancel-heavy orders to mislead
+- Quote stuffing: flooding book with orders
+- Layering: multiple fake levels to nudge price
+
+Flagged patterns prompt execution modules to widen spreads or slow trading.

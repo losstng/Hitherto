@@ -12,3 +12,17 @@ Central orchestrator that selects strategy playbooks based on market regime, fus
 - AI proposes regime changes; humans confirm or override.
 - Playbooks co-created with human strategists.
 - High-impact decisions require human review prior to execution.
+
+## Inputs/Outputs
+- **Inputs:** regime probabilities, aggregated signals from sentiment, fundamentals, technical, alt-data and seasonality modules, plus risk verdicts.
+- **Outputs:** playbook directives and execution commands dispatched to Allocation and Equity Management.
+
+### Example regime switch message
+```json
+{
+  "type": "regime_switch",
+  "from": "bull",
+  "to": "bear",
+  "confidence": 0.82
+}
+```

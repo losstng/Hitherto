@@ -12,3 +12,11 @@ Executes trades to reach target exposures while controlling market impact and li
 - Auto-execution handles routine orders; traders supervise and can halt.
 - Humans direct venue selection and intervene under abnormal conditions.
 - Execution notes feed back to refine algorithms.
+
+## Order lifecycle
+1. Order created with target size
+2. Risk module validates exposure
+3. Execution engine routes to venue and monitors fills
+4. Fills and slippage logged for feedback
+
+Logged slippage feeds back to Allocation and Risk modules.
