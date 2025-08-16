@@ -12,3 +12,17 @@ Extracts crowd mood and narrative tone from news and social data, generating sen
 - AI scores sentiment; analysts verify market-moving items.
 - Humans filter low-credibility sources and provide context.
 - Corrections loop back into future model training.
+
+## Data sources
+- News APIs (hourly refresh)
+- Social media firehoses (5‑minute updates)
+- Analyst reports and blogs (daily)
+
+### Sentiment signal format
+```json
+{
+  "ticker": "TSLA",
+  "score": -0.4,
+  "confidence": 0.73
+}
+```

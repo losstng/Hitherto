@@ -12,3 +12,10 @@ Optimizes portfolio weights and computational focus given expected returns, risk
 - AI proposes allocations; portfolio managers apply strategic overlays.
 - Humans weigh turnover costs, mandates, and research priorities.
 - Final allocation reflects both quantitative output and human directives.
+
+## Optimization sketch
+```
+min_w  CVaR_alpha(w^T r)
+subject to 1^T w = 1, w >= 0
+```
+Bandit scheduler reallocates compute toward modules with higher recent reward.

@@ -5,7 +5,12 @@ This document describes the major folders in the repository, their responsibilit
 ```mermaid
 flowchart TD
     Client -->|HTTP| Router --> Service --> Repository --> DB[(SQLite)]
+    Repository --> FAISS[(FAISS Index)]
+    Service --> Agents
+    Agents --> Service
 ```
+
+Agents exchange JSON messages with services, which in turn query both the SQL database and the FAISS vector store for context before responding to clients.
 
 ## backend/
 

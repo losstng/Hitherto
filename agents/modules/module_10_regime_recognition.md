@@ -12,3 +12,12 @@ Detects structural shifts in market dynamics and switches strategy playbooks acc
 - Humans co-define regime taxonomy and may force switches.
 - AI supplies probabilities and evidence; strategists oversee transitions.
 - Playbook changes are phased in under human supervision.
+
+## Switch criteria
+- Trigger when new regime probability > 0.7 for three consecutive sessions.
+
+| Regime | Playbook |
+| --- | --- |
+| Bull | Trend-following |
+| Bear | Defensive hedging |
+| Sideways | Mean reversion |

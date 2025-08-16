@@ -12,3 +12,12 @@ Defines feasible actions, evaluates VaR/ES and other limits, and can veto or dow
 - Humans set policy limits and review breaches.
 - AI performs real-time monitoring and alerts risk officers.
 - Extreme events handled jointly by the risk engine and human committee.
+
+## Example verdicts
+| Verdict | Condition |
+| --- | --- |
+| `APPROVED` | Projected VaR well below limit |
+| `DOWNGRADED` | VaR near limit – reduce size by 50% |
+| `REJECTED` | VaR exceeds limit or violation detected |
+
+Outputs feed back to Command & Control and Equity Management to adjust or halt orders.

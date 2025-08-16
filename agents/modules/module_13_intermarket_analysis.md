@@ -12,3 +12,11 @@ Places equity positions in macro context by monitoring cross-asset relationships
 - AI quantifies relationships; macro strategists supply hypotheses and event context.
 - Humans approve or modify hedge actions.
 - Joint briefings combine statistical output with economic narrative.
+
+## Sample correlation matrix
+| Asset | SPX | GLD |
+| --- | --- | --- |
+| SPX | 1 | -0.4 |
+| GLD | -0.4 | 1 |
+
+Resulting hedge: long GLD against SPX exposure. Macro events like rate hikes can shift these relationships.

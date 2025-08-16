@@ -12,3 +12,12 @@ Accounts for recurring calendar effects so other signals are interpreted relativ
 - AI offers seasonal baselines; humans adjust for unusual events.
 - Strategists review which seasonal patterns remain relevant.
 - Overrides are logged to refine future seasonality models.
+
+## Seasonal examples
+| Period | Typical effect |
+| --- | --- |
+| Jan | Post-holiday rebound |
+| Oct | Higher volatility |
+| Dec | Santa rally |
+
+Seasonal adjustments are applied before other modules evaluate anomalies.

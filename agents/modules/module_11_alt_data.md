@@ -12,3 +12,10 @@ Uses alternative data like search trends and web traffic to gauge attention and 
 - AI gathers signals; analysts vet sources and verify spikes.
 - Humans provide domain insight to avoid chasing fads.
 - Verified alt-data signals get higher weight in decision making.
+
+## Sources
+- Google Trends (daily)
+- Satellite imagery (weekly)
+- App store rankings (daily)
+
+Validated signals flow into Fundamentals and Sentiment modules.
