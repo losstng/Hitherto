@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
-from typing import Callable, Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -25,6 +25,7 @@ from backend import models
 from . import risk
 from .reasoner import LLMReasoner
 from .execution import execution, ExecutionService
+from .coordinator import ModuleCoordinator
 
 
 def load_playbooks(path: str) -> Dict[str, Dict[str, float]]:
@@ -193,7 +194,7 @@ class Overseer:
 
     def run_cycle(
         self,
-        modules: List[Callable[[], SignalBase]],
+        coordinator: ModuleCoordinator,
         overrides: Optional[List[HumanOverrideCommand]] = None,
         db: Optional[Session] = None,
     ):
@@ -202,7 +203,7 @@ class Overseer:
         own_session = db is None
         regime_signal = self.regime_classifier.classify()
         regime = self.regime_classifier.active_regime
-        signals = [m() for m in modules]
+        signals = coordinator.run()
         proposal = self.propose_trades(signals, regime)
         report = risk.evaluate(proposal)
         if not report.ok and report.suggested:

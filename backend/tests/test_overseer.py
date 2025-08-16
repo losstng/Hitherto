@@ -10,38 +10,45 @@ from backend.schemas import (
     TradeAction,
 )
 from backend.services.overseer import Overseer, load_playbooks, RegimeClassifier
+from backend.services import ModuleCoordinator
 from backend.database import Base
 from backend import models
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 
-def sentiment_module():
-    payload = SentimentPayload(
-        asset="AAPL",
-        sentiment_score=0.8,
-        summary="positive",
-        confidence=0.9,
-    )
-    return SentimentSignal(
-        origin_module="sentiment",
-        timestamp=datetime.utcnow(),
-        payload=payload,
-    )
+class SentimentModule:
+    name = "sentiment"
+
+    def generate(self, context):
+        payload = SentimentPayload(
+            asset="AAPL",
+            sentiment_score=0.8,
+            summary="positive",
+            confidence=0.9,
+        )
+        return SentimentSignal(
+            origin_module=self.name,
+            timestamp=datetime.utcnow(),
+            payload=payload,
+        )
 
 
-def technical_module():
-    payload = TechnicalPayload(
-        asset="AAPL",
-        indicator="MA",
-        value=1.0,
-        signal_strength="bullish",
-    )
-    return TechnicalSignal(
-        origin_module="technical",
-        timestamp=datetime.utcnow(),
-        payload=payload,
-    )
+class TechnicalModule:
+    name = "technical"
+
+    def generate(self, context):
+        payload = TechnicalPayload(
+            asset="AAPL",
+            indicator="MA",
+            value=1.0,
+            signal_strength="bullish",
+        )
+        return TechnicalSignal(
+            origin_module=self.name,
+            timestamp=datetime.utcnow(),
+            payload=payload,
+        )
 
 
 def test_overseer_run_cycle():
@@ -51,7 +58,8 @@ def test_overseer_run_cycle():
     Session = sessionmaker(bind=engine)
     session = Session()
     overseer = Overseer(playbooks)
-    result = overseer.run_cycle([sentiment_module, technical_module], db=session)
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    result = overseer.run_cycle(coord, db=session)
 
     proposal = result["proposal"]
     assert proposal.message_type == "TradeProposal"
@@ -92,7 +100,8 @@ def test_overseer_llm_reasoning(monkeypatch):
     Session = sessionmaker(bind=engine)
     session = Session()
     overseer = Overseer(playbooks)
-    result = overseer.run_cycle([sentiment_module, technical_module], db=session)
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    result = overseer.run_cycle(coord, db=session)
     action = result["proposal"].payload.actions[0]
     assert action.size == 5
     assert result["proposal"].payload.rationale[0] == "llm"
@@ -115,7 +124,8 @@ def test_overseer_risk_veto(monkeypatch):
         return RiskReport(ok=not flags, flags=flags, suggested={}, metrics={}, summary="")
 
     monkeypatch.setattr("backend.services.overseer.risk.evaluate", small_risk)
-    result = overseer.run_cycle([sentiment_module, technical_module])
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    result = overseer.run_cycle(coord)
     assert result["proposal"].payload.actions == []
     assert result["proposal"].payload.status == "REJECTED"
     assert result["executions"] == []
@@ -132,7 +142,8 @@ def test_overseer_applies_override():
             target_module="overseer", command_type="HALT", reason="maintenance"
         ),
     )
-    result = overseer.run_cycle([sentiment_module, technical_module], overrides=[override])
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    result = overseer.run_cycle(coord, overrides=[override])
     assert result["proposal"].payload.actions == []
     assert result["proposal"].payload.status == "PENDING_REVIEW"
     assert result["executions"] == []
@@ -152,7 +163,8 @@ def test_risk_adjusts_sizes():
             return ""
 
     overseer = Overseer(playbooks, reasoner=DummyReasoner())
-    result = overseer.run_cycle([sentiment_module, technical_module])
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    result = overseer.run_cycle(coord)
     adjusted = result["proposal"].payload.adjusted_actions[0]
     assert adjusted.size == 100
     assert result["executions"] == []
@@ -172,7 +184,8 @@ def test_gates_large_proposals():
             return ""
 
     overseer = Overseer(playbooks, reasoner=DummyReasoner())
-    result = overseer.run_cycle([sentiment_module, technical_module])
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    result = overseer.run_cycle(coord)
     assert result["proposal"].payload.status == "PENDING_REVIEW"
     assert result["executions"] == []
 
@@ -186,7 +199,8 @@ def test_persists_signals_and_proposals():
     playbooks = load_playbooks("backend/config/playbooks.json")
     regime = RegimeClassifier(session=session)
     overseer = Overseer(playbooks, regime_classifier=regime)
-    result = overseer.run_cycle([sentiment_module, technical_module], db=session)
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    result = overseer.run_cycle(coord, db=session)
 
     assert session.query(models.Signal).count() == 2
     assert session.query(models.Proposal).count() == 1
@@ -215,7 +229,8 @@ def test_execution_writes_human_note(monkeypatch):
     )
 
     overseer = Overseer(playbooks)
-    overseer.run_cycle([sentiment_module, technical_module], db=session)
+    coord = ModuleCoordinator([SentimentModule(), TechnicalModule()])
+    overseer.run_cycle(coord, db=session)
 
     decision = session.query(models.Decision).first()
     assert decision.human_note == "executed"
