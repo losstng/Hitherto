@@ -82,3 +82,11 @@ Python bytecode is disabled via the `.envrc` file which sets `PYTHONDONTWRITEBYT
 - `frontend/src/app/` – Next.js routes used by the UI.
 - `frontend/src/components/` – shared React components.
 - `frontend/src/hooks/` – React hooks wrapping API calls.
+## Agents directory
+
+The `agents/` folder hosts resources for LLM-based modules.
+
+- `agents/modules/` — one markdown per doctrine module summarizing roles and version differences.
+- `agents/legacy/` — archived prompt files and earlier agent artifacts.
+
+Refer to `agents/README.md` for details.
