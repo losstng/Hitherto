@@ -2,6 +2,10 @@
 
 This document explains the layout of the project and the quickest way for automation agents (or humans) to get the system running.
 
+## LLM Reasoning Orientation
+
+Hitherto is an ever-evolving framework built around large language models as the core reasoning engine. Every module focuses on supplying structured context so an LLM—invoked via API key—can reason about decisions according to the module's role. When extending the system, prioritize providing clear information for the LLM to interpret and act upon rather than encoding heavy logic directly in code.
+
 ## Structure
 
 - **backend/** – FastAPI application

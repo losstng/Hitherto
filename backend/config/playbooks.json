@@ -1,0 +1,16 @@
+{
+  "bull": {
+    "weights": {
+      "sentiment": 0.5,
+      "technical": 0.5
+    },
+    "review_threshold": 50
+  },
+  "bear": {
+    "weights": {
+      "sentiment": 0.3,
+      "technical": 0.7
+    },
+    "review_threshold": 50
+  }
+}
