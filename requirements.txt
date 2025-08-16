@@ -50,3 +50,6 @@ ipywidgets
 jupyter
 jupyter_client
 ipykernel
+prometheus-client
+starlette-exporter
+psutil

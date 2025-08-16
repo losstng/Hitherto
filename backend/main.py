@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from sqlalchemy import text
+from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from . import models
 from .database import engine
@@ -68,6 +69,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(PrometheusMiddleware)
+app.add_route("/metrics", handle_metrics)
 
 # ----- Routers -----
 app.include_router(ingest.router, prefix="/ingest", tags=["Ingest"])

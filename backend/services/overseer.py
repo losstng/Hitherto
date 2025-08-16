@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import time
 from typing import Dict, List, Any, Tuple, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,6 +27,7 @@ from . import risk
 from .reasoner import LLMReasoner
 from .execution import execution, ExecutionService
 from .coordinator import ModuleCoordinator
+from backend.observability import track, cycle_latency, cycle_success, cycle_failure
 
 
 def load_playbooks(path: str) -> Dict[str, Dict[str, float]]:
@@ -192,6 +194,7 @@ class Overseer:
                 )
                 proposal.payload.requires_human = True
 
+    @track("overseer_cycle")
     def run_cycle(
         self,
         coordinator: ModuleCoordinator,
@@ -199,97 +202,109 @@ class Overseer:
         db: Optional[Session] = None,
     ):
         """Run a full overseer cycle: classify regime, gather signals, propose trades."""
+        start = time.perf_counter()
         session = db or SessionLocal()
         own_session = db is None
-        regime_signal = self.regime_classifier.classify()
-        regime = self.regime_classifier.active_regime
-        signals = coordinator.run()
-        proposal = self.propose_trades(signals, regime)
-        report = risk.evaluate(proposal)
-        if not report.ok and report.suggested:
-            adjusted = []
-            for action in proposal.payload.actions:
-                if action.asset in report.suggested:
-                    new_size = report.suggested[action.asset]
-                    adjusted.append(TradeAction(asset=action.asset, action=action.action, size=new_size))
-                    proposal.payload.rationale.append(
-                        f"size for {action.asset} adjusted to {new_size} by risk"
-                    )
-                else:
-                    adjusted.append(action)
-            proposal.payload.adjusted_actions = adjusted
-            proposal.payload.actions = adjusted
-            report.ok = True
-        proposal.payload.risk_flags = report.flags
-        if not report.ok:
-            proposal.payload.actions = []
-            proposal.payload.rationale.append(
-                f"rejected by risk: {report.flags}"
-            )
-            proposal.payload.requires_human = True
-            proposal.payload.status = "REJECTED"
-        else:
-            self.apply_overrides(proposal, overrides or [])
-            threshold = self._review_threshold(regime)
-            actions_to_check = proposal.payload.adjusted_actions or proposal.payload.actions
-            if threshold is not None and any(a.size > threshold for a in actions_to_check):
-                proposal.payload.requires_human = True
-            if proposal.payload.requires_human:
-                proposal.payload.status = "PENDING_REVIEW"
-            else:
-                proposal.payload.status = "AUTO_APPROVED"
-        summary = self.summarize(proposal)
-        exec_reports: List[ExecutionReport] = []
         try:
-            for sig in signals:
-                session.add(
-                    models.Signal(
-                        module_name=sig.origin_module,
-                        signal_type=sig.message_type,
-                        content_json=sig.payload.model_dump(),
-                        generated_at=sig.timestamp,
-                    )
+            regime_signal = self.regime_classifier.classify()
+            regime = self.regime_classifier.active_regime
+            signals = coordinator.run()
+            proposal = self.propose_trades(signals, regime)
+            report = risk.evaluate(proposal)
+            if not report.ok and report.suggested:
+                adjusted: List[TradeAction] = []
+                for action in proposal.payload.actions:
+                    if action.asset in report.suggested:
+                        new_size = report.suggested[action.asset]
+                        adjusted.append(
+                            TradeAction(
+                                asset=action.asset,
+                                action=action.action,
+                                size=new_size,
+                            )
+                        )
+                        proposal.payload.rationale.append(
+                            f"size for {action.asset} adjusted to {new_size} by risk"
+                        )
+                    else:
+                        adjusted.append(action)
+                proposal.payload.adjusted_actions = adjusted
+                proposal.payload.actions = adjusted
+                report.ok = True
+            proposal.payload.risk_flags = report.flags
+            if not report.ok:
+                proposal.payload.actions = []
+                proposal.payload.rationale.append(
+                    f"rejected by risk: {report.flags}"
                 )
-            session.commit()
-            status_map = {
-                "AUTO_APPROVED": models.ProposalStatus.APPROVED,
-                "PENDING_REVIEW": models.ProposalStatus.PENDING_REVIEW,
-                "REJECTED": models.ProposalStatus.REJECTED,
+                proposal.payload.requires_human = True
+                proposal.payload.status = "REJECTED"
+            else:
+                self.apply_overrides(proposal, overrides or [])
+                threshold = self._review_threshold(regime)
+                actions_to_check = proposal.payload.adjusted_actions or proposal.payload.actions
+                if threshold is not None and any(a.size > threshold for a in actions_to_check):
+                    proposal.payload.requires_human = True
+                if proposal.payload.requires_human:
+                    proposal.payload.status = "PENDING_REVIEW"
+                else:
+                    proposal.payload.status = "AUTO_APPROVED"
+            summary = self.summarize(proposal)
+            exec_reports: List[ExecutionReport] = []
+            try:
+                for sig in signals:
+                    session.add(
+                        models.Signal(
+                            module_name=sig.origin_module,
+                            signal_type=sig.message_type,
+                            content_json=sig.payload.model_dump(),
+                            generated_at=sig.timestamp,
+                        )
+                    )
+                session.commit()
+                status_map = {
+                    "AUTO_APPROVED": models.ProposalStatus.APPROVED,
+                    "PENDING_REVIEW": models.ProposalStatus.PENDING_REVIEW,
+                    "REJECTED": models.ProposalStatus.REJECTED,
+                }
+                db_proposal = models.Proposal(
+                    proposal_json=proposal.payload.model_dump(),
+                    status=status_map.get(proposal.payload.status, models.ProposalStatus.PENDING_REVIEW),
+                )
+                session.add(db_proposal)
+                session.commit()
+                for cmd in overrides or []:
+                    session.add(
+                        models.Override(
+                            module=cmd.payload.target_module,
+                            action=cmd.payload.command_type,
+                            details_json=cmd.payload.parameters,
+                            user=cmd.payload.parameters.get("user", "unknown"),
+                            proposal_id=db_proposal.id,
+                        )
+                    )
+                session.commit()
+                if proposal.payload.status == "AUTO_APPROVED":
+                    exec_reports = execution.execute(
+                        proposal, db_proposal.id, session
+                    )
+                cycle_success.inc()
+            except SQLAlchemyError:
+                session.rollback()
+                cycle_failure.inc()
+            finally:
+                if own_session:
+                    try:
+                        session.close()
+                    except Exception:
+                        pass
+            return {
+                "regime_signal": regime_signal,
+                "signals": signals,
+                "proposal": proposal,
+                "risk_report": report,
+                "summary": summary,
+                "executions": exec_reports,
             }
-            db_proposal = models.Proposal(
-                proposal_json=proposal.payload.model_dump(),
-                status=status_map.get(proposal.payload.status, models.ProposalStatus.PENDING_REVIEW),
-            )
-            session.add(db_proposal)
-            session.commit()
-            for cmd in overrides or []:
-                session.add(
-                    models.Override(
-                        module=cmd.payload.target_module,
-                        action=cmd.payload.command_type,
-                        details_json=cmd.payload.parameters,
-                        user=cmd.payload.parameters.get("user", "unknown"),
-                        proposal_id=db_proposal.id,
-                    )
-                )
-            session.commit()
-            if proposal.payload.status == "AUTO_APPROVED":
-                exec_reports = execution.execute(
-                    proposal, db_proposal.id, session
-                )
-        except SQLAlchemyError:
-            session.rollback()
         finally:
-            if own_session:
-                try:
-                    session.close()
-                except Exception:
-                    pass
-        return {
-            "regime_signal": regime_signal,
-            "signals": signals,
-            "proposal": proposal,
-            "risk_report": report,
-            "summary": summary,
-            "executions": exec_reports,
-        }
+            cycle_latency.observe(time.perf_counter() - start)
