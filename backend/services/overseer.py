@@ -15,6 +15,10 @@ from backend.schemas import (
     SignalBase,
     SentimentSignal,
     TechnicalSignal,
+    FundamentalSignal,
+    AltDataSignal,
+    SeasonalitySignal,
+    IntermarketSignal,
     TradeAction,
     HumanOverrideCommand,
     TradeProposal,
@@ -135,6 +139,14 @@ class Overseer:
         if isinstance(sig, TechnicalSignal):
             mapping = {"bullish": 1.0, "bearish": -1.0}
             return mapping.get(sig.payload.signal_strength.lower(), 0.0)
+        if isinstance(sig, FundamentalSignal):
+            return sig.payload.mispricing_percent / 100.0
+        if isinstance(sig, AltDataSignal):
+            return sig.payload.value
+        if isinstance(sig, SeasonalitySignal):
+            return sig.payload.seasonal_strength
+        if isinstance(sig, IntermarketSignal):
+            return sig.payload.value
         return 0.0
 
     # -----------------------------------------------------

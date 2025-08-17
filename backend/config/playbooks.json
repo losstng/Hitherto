@@ -2,14 +2,22 @@
   "bull": {
     "weights": {
       "sentiment": 0.5,
-      "technical": 0.5
+      "technical": 0.5,
+      "altdata": 0.1,
+      "fundamentals": 0.1,
+      "seasonality": 0.05,
+      "intermarket": 0.05
     },
     "review_threshold": 50
   },
   "bear": {
     "weights": {
       "sentiment": 0.3,
-      "technical": 0.7
+      "technical": 0.7,
+      "altdata": 0.1,
+      "fundamentals": 0.1,
+      "seasonality": 0.05,
+      "intermarket": 0.05
     },
     "review_threshold": 50
   }
