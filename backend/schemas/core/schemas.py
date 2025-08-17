@@ -44,6 +44,56 @@ class TechnicalSignal(SignalBase):
     payload: TechnicalPayload
 
 
+class AltDataPayload(BaseModel):
+    asset: str
+    metric: str
+    value: float
+    confidence: float
+
+
+class AltDataSignal(SignalBase):
+    message_type: Literal["AltDataSignal"] = "AltDataSignal"
+    payload: AltDataPayload
+
+
+class FundamentalPayload(BaseModel):
+    asset: str
+    fair_value_estimate: float
+    mispricing_percent: float
+    confidence: float
+    rationale: Optional[str] = None
+
+
+class FundamentalSignal(SignalBase):
+    message_type: Literal["FundamentalSignal"] = "FundamentalSignal"
+    payload: FundamentalPayload
+
+
+class SeasonalityPayload(BaseModel):
+    asset: str
+    bias: float
+    pattern: str
+    confidence: float
+
+
+class SeasonalitySignal(SignalBase):
+    message_type: Literal["SeasonalitySignal"] = "SeasonalitySignal"
+    payload: SeasonalityPayload
+
+
+class IntermarketPayload(BaseModel):
+    asset: str
+    indicator: str
+    value: float
+    implication: str
+    confidence: float
+
+
+class IntermarketSignal(SignalBase):
+    message_type: Literal["IntermarketSignal"] = "IntermarketSignal"
+    payload: IntermarketPayload
+
+
 class RegimePayload(BaseModel):
     regime_label: str
     confidence: float

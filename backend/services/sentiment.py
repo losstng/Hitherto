@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List, Tuple
 
 from backend.database import SessionLocal
 from backend.models import Newsletter, Signal
-from backend.schemas import SentimentPayload, SentimentSignal
+from backend.schemas import SentimentPayload, SentimentSignal, SignalBase
 from backend.observability import track
 
 POSITIVE_WORDS = {
@@ -43,6 +43,8 @@ class SentimentAnalyzer:
     it falls back to a simple lexical rule-based scorer. Generated signals are
     persisted to the ``signals`` table for auditability.
     """
+
+    name = "sentiment"
 
     def __init__(self, model: str = "gpt-3.5-turbo"):
         self.model = model
@@ -107,7 +109,13 @@ class SentimentAnalyzer:
             origin_module="sentiment",
             timestamp=datetime.utcnow(),
             payload=payload,
+            confidence=payload.confidence,
         )
+
+    @track("sentiment_generate")
+    def generate(self, context: Dict[str, SignalBase]) -> SentimentSignal:
+        """Produce a neutral sentiment signal for pipeline integration."""
+        return self.score_text("AAPL", "")
 
     # ------------------------------------------------------------------
     @track("sentiment_generate")
