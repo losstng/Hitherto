@@ -71,7 +71,7 @@ class FundamentalSignal(SignalBase):
 
 class SeasonalityPayload(BaseModel):
     asset: str
-    seasonal_strength: float
+    bias: float
     pattern: str
     confidence: float
 

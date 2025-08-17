@@ -1,6 +1,7 @@
 """Service layer initialisation for Hitherto backend."""
 
 from .coordinator import ModuleCoordinator, ModuleProtocol  # noqa: F401
+from .sentiment import SentimentAnalyzer  # noqa: F401
 from .technical import TechnicalAnalyzer  # noqa: F401
 from .altdata import AltDataAnalyzer  # noqa: F401
 from .fundamentals import FundamentalsAnalyzer  # noqa: F401
@@ -12,6 +13,7 @@ def build_coordinator() -> ModuleCoordinator:
     """Return a coordinator with modules in dependency order."""
 
     modules = [
+        SentimentAnalyzer(),
         TechnicalAnalyzer(),
         AltDataAnalyzer(),
         FundamentalsAnalyzer(),
@@ -24,6 +26,7 @@ def build_coordinator() -> ModuleCoordinator:
 __all__ = [
     "ModuleCoordinator",
     "ModuleProtocol",
+    "SentimentAnalyzer",
     "TechnicalAnalyzer",
     "AltDataAnalyzer",
     "FundamentalsAnalyzer",

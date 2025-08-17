@@ -3,6 +3,7 @@ from datetime import datetime
 from backend.schemas import FundamentalPayload, FundamentalSignal
 from backend.services import (
     ModuleCoordinator,
+    SentimentAnalyzer,
     AltDataAnalyzer,
     FundamentalsAnalyzer,
     SeasonalityAnalyzer,
@@ -43,6 +44,7 @@ def test_fundamentals_analyzer_basic():
 
 def test_module_coordinator_runs_all_modules():
     coord = ModuleCoordinator([
+        SentimentAnalyzer(),
         TechnicalAnalyzer(),
         AltDataAnalyzer(),
         FundamentalsAnalyzer(),
@@ -50,8 +52,9 @@ def test_module_coordinator_runs_all_modules():
         IntermarketAnalyzer(),
     ])
     signals = coord.run()
-    assert len(signals) == 5
+    assert len(signals) == 6
     assert set(coord.context.keys()) == {
+        "sentiment",
         "technical",
         "altdata",
         "fundamentals",
@@ -64,6 +67,7 @@ def test_overseer_cycle_with_new_modules():
     playbooks = load_playbooks("backend/config/playbooks.json")
     overseer = Overseer(playbooks)
     coord = ModuleCoordinator([
+        SentimentAnalyzer(),
         TechnicalAnalyzer(),
         AltDataAnalyzer(),
         FundamentalsAnalyzer(),
@@ -75,6 +79,6 @@ def test_overseer_cycle_with_new_modules():
     Session = sessionmaker(bind=engine)
     session = Session()
     result = overseer.run_cycle(coord, db=session)
-    assert len(result["signals"]) == 5
+    assert len(result["signals"]) == 6
     assert any(sig.message_type == "FundamentalSignal" for sig in result["signals"])
     assert result["proposal"].payload.actions

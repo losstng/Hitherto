@@ -144,7 +144,7 @@ class Overseer:
         if isinstance(sig, AltDataSignal):
             return sig.payload.value
         if isinstance(sig, SeasonalitySignal):
-            return sig.payload.seasonal_strength
+            return sig.payload.bias
         if isinstance(sig, IntermarketSignal):
             return sig.payload.value
         return 0.0
