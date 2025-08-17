@@ -10,6 +10,7 @@ from typing import Dict, Iterable, List, Tuple
 from backend.database import SessionLocal
 from backend.models import Newsletter, Signal
 from backend.schemas import SentimentPayload, SentimentSignal
+from backend.observability import track
 
 POSITIVE_WORDS = {
     "good",
@@ -109,6 +110,7 @@ class SentimentAnalyzer:
         )
 
     # ------------------------------------------------------------------
+    @track("sentiment_generate")
     def generate_from_newsletters(self, session: SessionLocal) -> List[SentimentSignal]:
         """Analyze all newsletters and persist resulting signals.
 
