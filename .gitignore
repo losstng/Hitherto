@@ -3,6 +3,43 @@ __pycache__/
 **/__pycache__/
 *.py[cod]
 
+# Secrets and credentials
+.env
+credentials.json
+token.json
+
+# Database and vector store
+db/faiss_store/
+stock_price_thread.json
+stock_prices_cache.json
+volume_cache.json
+
+# Jupyter and notebook outputs
+*.ipynb_checkpoints
+notebooks/__pycache__/
+
+# Node and frontend artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/.env*
+
+# Debug and script cache
+debug_tools/__pycache__/
+scripts/__pycache__/
+yfinance/__pycache__/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+.pytest_cache/
+.coverage
+coverage.xml
+
+# VSCode settings
+.vscode/
+
 # Environment files
 .env
 .env.*
