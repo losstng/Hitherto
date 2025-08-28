@@ -44,7 +44,7 @@ const ask = useMutation({
           message_ids: ids,
           k: 5,
         });
-        if (data.success) chunks = data.data.map((d) => d.page_content);
+        if (data.success && data.data) chunks = data.data.map((d) => d.page_content);
       } else if (filters.category || filters.start || filters.end) {
         const { data } = await api.post<ApiResponse<ContextDoc[]>>('/context', {
           query: text,
@@ -53,7 +53,7 @@ const ask = useMutation({
           end_date: filters.end || null,
           k: 5,
         });
-        if (data.success) chunks = data.data.map((d) => d.page_content);
+        if (data.success && data.data) chunks = data.data.map((d) => d.page_content);
       } else {
         const { data } = await api.post<ApiResponse<ContextDoc[]>>('/context', {
           query: text,
@@ -62,7 +62,7 @@ const ask = useMutation({
           end_date: null,
           k: 5,
         });
-        if (data.success) chunks = data.data.map((d) => d.page_content);
+        if (data.success && data.data) chunks = data.data.map((d) => d.page_content);
       }
 
       if (chunks.length > 0) payload.chunks = chunks;

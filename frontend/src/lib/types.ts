@@ -53,3 +53,28 @@ export interface ChatMessage {
   timestamp?: string;
   source?: string;
 }
+
+// Stock data types
+export interface StockOHLCV {
+  date: string;
+  datetime: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  time?: string; // For intraday data
+}
+
+export interface StockDataForDate {
+  symbol: string;
+  date: string;
+  daily: StockOHLCV | null;
+  intraday: StockOHLCV[];
+}
+
+export interface TimelineItem {
+  date: string;
+  newsletters: NewsletterLite[];
+  stockData: StockDataForDate[];
+}

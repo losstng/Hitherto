@@ -18,6 +18,12 @@ import logging
 
 from ..env import STOCK_DEFAULT_TICKERS as DEFAULT_TICKERS
 from ..schemas import ApiResponse
+from ..services.stock_data import (
+    get_available_stocks,
+    load_daily_stock_data,
+    load_intraday_stock_data,
+    get_stock_data_for_date
+)
 
 try:  # pragma: no cover - optional dependency
     import yfinance as yf
@@ -99,3 +105,62 @@ def get_stock_quotes(tickers: str | None = Query(None)):
             quotes.append({"symbol": sym, "error": str(e)})
     logger.debug("Returning %d quotes", len(quotes))
     return ApiResponse(success=True, data=quotes)
+
+
+@router.get("/symbols", response_model=ApiResponse)
+def get_available_symbols():
+    """Get list of available stock symbols from CSV files."""
+    logger.info("Fetching available stock symbols")
+    try:
+        symbols = get_available_stocks()
+        logger.debug(f"Found {len(symbols)} symbols")
+        return ApiResponse(success=True, data=symbols)
+    except Exception as e:
+        logger.exception("Failed to fetch available symbols")
+        return ApiResponse(success=False, error=str(e))
+
+
+@router.get("/daily/{symbol}", response_model=ApiResponse)
+def get_daily_data(
+    symbol: str,
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None)
+):
+    """Get daily OHLCV data for a symbol."""
+    logger.info(f"Fetching daily data for {symbol}")
+    try:
+        data = load_daily_stock_data(symbol, start_date, end_date)
+        logger.debug(f"Returning {len(data)} daily records for {symbol}")
+        return ApiResponse(success=True, data=data)
+    except Exception as e:
+        logger.exception(f"Failed to fetch daily data for {symbol}")
+        return ApiResponse(success=False, error=str(e))
+
+
+@router.get("/intraday/{symbol}", response_model=ApiResponse)
+def get_intraday_data(
+    symbol: str,
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None)
+):
+    """Get 5-minute OHLCV data for a symbol."""
+    logger.info(f"Fetching intraday data for {symbol}")
+    try:
+        data = load_intraday_stock_data(symbol, start_date, end_date)
+        logger.debug(f"Returning {len(data)} intraday records for {symbol}")
+        return ApiResponse(success=True, data=data)
+    except Exception as e:
+        logger.exception(f"Failed to fetch intraday data for {symbol}")
+        return ApiResponse(success=False, error=str(e))
+
+
+@router.get("/data/{symbol}/{date}", response_model=ApiResponse)
+def get_stock_data_by_date(symbol: str, date: str):
+    """Get both daily and intraday data for a symbol on a specific date."""
+    logger.info(f"Fetching stock data for {symbol} on {date}")
+    try:
+        data = get_stock_data_for_date(symbol, date)
+        return ApiResponse(success=True, data=data)
+    except Exception as e:
+        logger.exception(f"Failed to fetch stock data for {symbol} on {date}")
+        return ApiResponse(success=False, error=str(e))

@@ -32,7 +32,7 @@ Hitherto is a small research environment built around a FastAPI backend and a Ne
 5. Start the API server:
    ```bash
    export PYTHONPATH=$(pwd)
-   python -m uvicorn backend.main:app --reload --log-level debug \
+   python -m uvicorn backend.main:app --reload --log-level debug 
      --port "${FASTAPI_PORT:-8000}"
    ```
 6. In another terminal, launch the frontend:

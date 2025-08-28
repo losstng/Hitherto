@@ -3,8 +3,6 @@ from pydantic import BaseModel
 from ..schemas import ApiResponse
 from ..services.context import retrieve_context
 import logging
-from backend.llm.llm import LocalLLMClient
-from backend.llm.load_prompt import load_system_prompt
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

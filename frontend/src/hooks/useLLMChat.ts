@@ -68,10 +68,10 @@ export function useLLMChat() {
 
     // --- Compose messages for LLM API ---
     const chatHistory = [...messages, userMsg].map(m => ({ role: m.role, content: m.text }));
-    let llmMessages = chatHistory;
+    let llmMessages: Array<{ role: "user" | "assistant" | "system"; content: string }> = chatHistory;
     if (chunkContents.length > 0) {
       const contextMessage = {
-        role: "system", // could be user as well, but system injects context best
+        role: "system" as const,
         content: `Here are some context excerpts for the following chat.\n${chunkContents.join("\n---\n")}`
       };
       llmMessages = [contextMessage, ...chatHistory];
@@ -93,7 +93,7 @@ export function useLLMChat() {
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (e) {
+    } catch (e: any) {
       console.error('LLM API error', e, e?.response?.data);
       setMessages(prev => [...prev, {
         id: `${Date.now()}-e`,

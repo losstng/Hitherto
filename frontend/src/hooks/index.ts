@@ -7,6 +7,13 @@ export {
   useExtractAll,
   useVectorizeAll,
 } from "./useIngest";
-export { useStockQuotes, type StockQuote } from "./useStocks";
+export { 
+  useStockQuotes, 
+  useAvailableSymbols,
+  useDailyStockData,
+  useIntradayStockData,
+  useStockDataForDate,
+  type StockQuote 
+} from "./useStocks";
 export { useLLMChat } from "./useLLMChat";
 
